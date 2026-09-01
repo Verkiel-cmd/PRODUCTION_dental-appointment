@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grace Dental Clinic - Online Appointment Booking</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            🦷 Dental Clinic
+        </div>
+        <div>
+            <span class="badge">● Online Booking Active</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Book Your Dental Appointment</h1>
+            <p>Fast, easy, and confirmed via instant SMS notification.</p>
+        </div>
+
+        <div class="booking-card">
+           <form onsubmit="event.preventDefault(); showPopup('OTP Verified', 'Demo Mode: OTP Verification Sent!');">
+                <div class="grid">
+                    <div class="form-group">
+                        <label for="fullname">Full Name</label>
+                        <input type="text" id="fullname" placeholder="e.g. Juan Dela Cruz" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="service">Select Service</label>
+                        <select id="service" required>
+                            <option value="">-- Choose Dental Service --</option>
+                            <option value="cleaning">Teeth Cleaning (Prophylaxis)</option>
+                            <option value="checkup">General Consultation & Checkup</option>
+                            <option value="extraction">Tooth Extraction</option>
+                            <option value="whitening">Teeth Whitening</option>
+                            <option value="braces">Orthodontic Braces Consultation</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="date">Preferred Date</label>
+                        <input type="date" id="date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="time">Preferred Time Slot</label>
+                        <select id="time" required>
+                            <option value="">-- Choose Time --</option>
+                            <option value="09:00">09:00 AM - 10:00 AM</option>
+                            <option value="10:30">10:30 AM - 11:30 AM</option>
+                            <option value="13:30">01:30 PM - 02:30 PM</option>
+                            <option value="15:00">03:00 PM - 04:00 PM</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Mobile Number (For Instant SMS Confirmation)</label>
+                    <div class="otp-box">
+                        <input type="tel" id="phone" placeholder="0917XXXXXXX" required>
+                        <button type="button" class="btn btn-secondary" onclick="showPopup('Demo: OTP sent to mobile number!')">Send OTP</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="otp">Enter 6-Digit OTP Code</label>
+                    <input type="text" id="otp" placeholder="Enter code received via SMS" maxlength="6">
+                </div>
+
+                <button type="submit" class="btn">Confirm & Book Appointment</button>
+                </form>
+        </div>
+
+        <div class="features">
+            <div class="feature-item">
+                <h4>OTP Verified</h4>
+                <p>No fake spam bookings.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Instant Confirmation</h4>
+                <p>Automatic SMS reminders sent.</p>
+            </div>
+            <div class="feature-item">
+                <h4>24/7 Availability</h4>
+                <p>Book anytime, anywhere.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="customPopup" class="modal-overlay">
+            <div class="modal">
+                <p id="modalMsg">Message</p>
+                <button class="btn-modal" onclick="closePopup()">Close</button>
+            </div>
+        </div>
+
+    <script>
+        function showPopup(title, message) {
+            document.getElementById('modalMsg').textContent = message;
+            document.getElementById('customPopup').style.display = 'flex';
+        }
+        function closePopup() {
+            document.getElementById('customPopup').style.display = 'none';
+        }
+    </script>
+
+</body>
+</html>
