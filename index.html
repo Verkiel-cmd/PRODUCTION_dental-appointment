@@ -24,7 +24,7 @@
         </div>
 
         <div class="booking-card">
-           <form onsubmit="event.preventDefault(); showPopup('OTP Verified', 'Demo Mode: OTP Verification Sent!');">
+           <form onsubmit="event.preventDefault(); showPopup('Demo Mode: OTP Verification Sent!');">
                 <div class="grid">
                     <div class="form-group">
                         <label for="fullname">Full Name</label>
@@ -64,7 +64,7 @@
                     <label for="phone">Mobile Number (For Instant SMS Confirmation)</label>
                     <div class="otp-box">
                         <input type="tel" id="phone" placeholder="0917XXXXXXX" required>
-                        <button type="button" class="btn btn-secondary" onsubmit="event.preventDefault(); showPopup('Demo: OTP sent to mobile number!')">Send OTP</button>
+                        <button type="button" class="btn btn-secondary" onclick="event.preventDefault(); showPopup('Demo: OTP sent to mobile number!')">Send OTP</button>
                     </div>
                 </div>
 
@@ -93,20 +93,22 @@
         </div>
     </div>
 
-    <div id="customPopup" class="modal-overlay">
+    <div id="customPopupMessage" class="modal-overlay">
             <div class="modal">
                 <p id="modalMsg">Message</p>
-                <button class="btn-modal" onclick="closePopup()">Close</button>
+                <button class="btn-modal" onclick="closePopupMessage()">Close</button>
             </div>
         </div>
 
     <script>
-        function showPopup(title, message) {
+        //SLOT 1: MESSAGE, showPopup, only called once but since the messages was called in the same function it will show the
+        //code on its specific messages cos the function only called for once so each messaegs in onlclick, and onsubmit, was only called once per each specifc messages.
+        function showPopup(message) {
             document.getElementById('modalMsg').textContent = message;
-            document.getElementById('customPopup').style.display = 'flex';
+            document.getElementById('customPopupMessage').style.display = 'flex';
         }
-        function closePopup() {
-            document.getElementById('customPopup').style.display = 'none';
+        function closePopupMessage() {
+            document.getElementById('customPopupMessage').style.display = 'none';
         }
     </script>
 
