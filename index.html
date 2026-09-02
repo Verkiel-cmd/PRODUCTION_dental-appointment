@@ -64,7 +64,7 @@
                     <label for="phone">Mobile Number (For Instant SMS Confirmation)</label>
                     <div class="otp-box">
                         <input type="tel" id="phone" placeholder="0917XXXXXXX" required>
-                        <button type="button" class="btn btn-secondary" onclick="showPopup('Demo: OTP sent to mobile number!')">Send OTP</button>
+                        <button type="button" class="btn btn-secondary" onsubmit="event.preventDefault(); showPopup('Demo: OTP sent to mobile number!')">Send OTP</button>
                     </div>
                 </div>
 
