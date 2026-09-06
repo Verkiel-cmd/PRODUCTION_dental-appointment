@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import cors from 'cors';
 import { fileURLToPath } from 'url';
 
 // Fix for ES Module directory resolution (__dirname)
@@ -14,6 +15,7 @@ const PORT = process.env.PORT || 5000;
 // =============================================================================
 // Body parser for JSON payloads from fetch()
 app.use(express.json());
+app.use(cors());
 
 // Serve static frontend files (HTML, CSS, client-side JS) from 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
