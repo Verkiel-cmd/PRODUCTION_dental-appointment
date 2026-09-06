@@ -2,6 +2,13 @@
   "name": "dental-appointment",
   "version": "1.0.0",
   "private": true,
-  "scripts": { "test": "jest" },
-  "devDependencies": { "jest": "^29.7.0" }
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
 }
