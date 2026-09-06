@@ -1,5 +1,5 @@
 const fs = require('fs');
-const html = fs.readFileSync('index.html', 'utf8');
+const html = fs.readFileSync('public/index.html', 'utf8');
 
 test('index.html exists', () => 
     expect(html.length).toBeGreaterThan(0));
