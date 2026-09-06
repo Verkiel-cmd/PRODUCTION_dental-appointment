@@ -25,7 +25,8 @@
 
         <div class="booking-card">
             <!-- it was setup by its own button and what that button triggers -->
-           <form onsubmit="event.preventDefault(); showPopup('Demo Mode: OTP Verification Sent!');">
+              <!-- onsubmit="event.preventDefault(); showPopup('Demo Mode: OTP Verification Sent!');"> -->
+           <form id="bookingForm">
                 <div class="grid">
                     <div class="form-group">
                         <label for="fullname">Full Name</label>
@@ -65,13 +66,14 @@
                     <label for="phone">Mobile Number (For Instant SMS Confirmation)</label>
                     <div class="otp-box">
                         <input type="tel" id="phone" placeholder="0917XXXXXXX" required>
-                        <button type="button" class="btn btn-secondary" onclick="event.preventDefault(); showPopup('Demo: OTP sent to mobile number!')">Send OTP</button>
+                         <!-- onclick="event.preventDefault(); showPopup('Demo: OTP sent to mobile number!')">Send OTP</button> -->
+                        <button type="button" id="sendOTP" class="btn btn-secondary">Send OTP</button>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="otp">Enter 6-Digit OTP Code</label>
-                    <input type="text" id="otp" placeholder="Enter code received via SMS" maxlength="6">
+                    <input type="text" id="otp" placeholder="Enter code received via SMS" maxlength="6" required>
                 </div>
 
                 <button type="submit" class="btn">Confirm & Book Appointment</button>
@@ -103,6 +105,9 @@
         </div>
 
     <script>
+        //Date conevrt for Philippine Timezone
+        const todayPH = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+        document.getElementById('date').min = todayPH;
         //SLOT 1: MESSAGE, showPopup, only called once but since the messages was called in the same function it will show the
         //code on its specific messages cos the function only called for once so each messaegs in onlclick, and onsubmit, was only called once per each specifc messages.
         function showPopup(message) {
@@ -112,6 +117,66 @@
         function closePopupMessage() {
             document.getElementById('customPopupMessage').style.display = 'none';
         }
+
+        document.getElementById('sendOTP').addEventListener('click', () => {
+            // Handle OTP sending logic here
+            const phone = document.getElementById('phone').value;
+            if (!phone || phone.length < 11) {
+                showPopup("Please enter a valid mobile number");
+                return;
+            }
+            showPopup("Demo Mode: OTP sent to " + phone + "! Please check your messages.");
+        });
+
+        document.getElementById('bookingForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const fullname = document.getElementById('fullname').value;
+            const service = document.getElementById('service').value;
+            const date = document.getElementById('date').value;
+            const time = document.getElementById('time').value;
+            const phone = document.getElementById('phone').value;
+            const otp = document.getElementById('otp').value;
+
+            const sendBookingData = async () => {
+                const payload = {
+                    fullname,
+                    service,
+                    date,
+                    time,
+                    phone,
+                    otp
+                };
+                try {
+                    const response = await fetch('/api/book-appointment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+
+                    if (response.status === 201) {
+                        showPopup('Appointment booked successfully! Confirmation sent to your mobile number.');
+                        //reset the form to clear one so it looks not like a clutter
+                        document.getElementById('bookingForm').reset();
+                        return result.data;
+                    } else {
+                        showPopup(`Error: ${result.error || result.message}`);
+                    }
+                } catch (error) {
+                    showPopup(`Error: ${error.message}`);
+                }
+                };
+
+                 await sendBookingData();
+
+            });
+
+
+
+        
     </script>
 
 </body>
