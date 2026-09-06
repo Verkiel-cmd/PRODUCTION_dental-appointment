@@ -24,7 +24,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const database = [];
 
 
-app.post('https://dental-appointment-vozo.onrender.com/api/book-appointment', (req, res) => {
+app.post('/api/book-appointment', (req, res) => {
   try {
     const {
           fullname,
