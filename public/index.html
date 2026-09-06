@@ -121,7 +121,7 @@
         document.getElementById('sendOTP').addEventListener('click', () => {
             // Handle OTP sending logic here
             const phone = document.getElementById('phone').value;
-            if (!phone || phone.length < 11) {
+            if (!phone || phone.length < 10) {
                 showPopup("Please enter a valid mobile number");
                 return;
             }
@@ -148,7 +148,7 @@
                     otp
                 };
                 try {
-                    const response = await fetch('/api/book-appointment', {
+                    const response = await fetch('https://dental-appointment-vozo.onrender.com/api/book-appointment', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json' },
