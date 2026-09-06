@@ -58,6 +58,13 @@ app.post('/api/book-appointment', (req, res) => {
 
     database.push(newBooking);
 
+    //Since no database is used, the data will be stored in RAM and will be last until the server is restarted. This is for demo purposes only. In a real application you would use a database like MongoDB, PostgreSQL, etc. to persist data.
+    
+    console.log('New booking added:', newBooking);
+    console.log('Current database state:', database);
+    console.log('Total bookings:', database.length);
+
+
     return res.status(201).json({
       success: true,
       message: 'Appointment booked successfully!',
