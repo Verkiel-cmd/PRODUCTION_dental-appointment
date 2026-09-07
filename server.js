@@ -38,12 +38,73 @@ const HTTPSMS_SENDER_NUMBER = process.env.HTTPSMS_PHONE_NUMBER || '+639934415338
 // Helper: Format phone number to international E.164 (+63)
 function formatPhoneNumber(phone) {
   if (!phone) return '';
-  let cleaned = phone.replace(/\D/g, '');
+  
+  // Quick check: If the user typed a full international number with '+', preserve it
+  if (phone.trim().startsWith('+')) {
+    return '+' + phone.replace(/\D/g, '');
+  }
+
+  let cleaned = phone.replace(/\D/g, ''); // Strip non-digits
+
+  // ===
+  // COUNTRY PHONE FORMATTER PRESETS
+  // ===
+
+  // --- 1. PHILIPPINES (+63) --- [DEFAULT ACTIVE]
+  // Local input: 09171234567, 9171234567, or 639171234567 -> Output: +639171234567
   if (cleaned.startsWith('0')) {
     cleaned = '63' + cleaned.slice(1);
-  }else if (!cleaned.startsWith('63')){
+  } else if (cleaned.length === 10 && cleaned.startsWith('9')) {
+    cleaned = '63' + cleaned;
+  } else if (!cleaned.startsWith('63')) {
     cleaned = '63' + cleaned;
   }
+
+  // --- 2. USA / CANADA / US TERRITORIES (+1) ---
+  // Local input: 5551234567 or 15551234567 -> Output: +15551234567
+  /*
+  if (cleaned.length === 10) {
+    cleaned = '1' + cleaned;
+  } else if (cleaned.startsWith('0')) {
+    cleaned = '1' + cleaned.slice(1);
+  }
+  */
+
+  // --- 3. UNITED KINGDOM (+44) ---
+  // Local input: 07123456789 -> Output: +447123456789
+  /*
+  if (cleaned.startsWith('0')) {
+    cleaned = '44' + cleaned.slice(1);
+  } else if (!cleaned.startsWith('44')) {
+    cleaned = '44' + cleaned;
+  }
+  */
+
+  // --- 4. AUSTRALIA (+61) ---
+  // Local input: 0412345678 -> Output: +61412345678
+  /*
+  if (cleaned.startsWith('0')) {
+    cleaned = '61' + cleaned.slice(1);
+  } else if (!cleaned.startsWith('61')) {
+    cleaned = '61' + cleaned;
+  }
+  */
+
+  // --- 5. JAPAN (+81) ---
+  // Local input: 09012345678 -> Output: +819012345678
+  /*
+  if (cleaned.startsWith('0')) {
+    cleaned = '81' + cleaned.slice(1);
+  } else if (!cleaned.startsWith('81')) {
+    cleaned = '81' + cleaned;
+  }
+  */
+
+  // --- 6. PASSTHROUGH / INTERNATIONAL ---
+  /*
+  // Leaves 'cleaned' as-is
+  */
+
   return '+' + cleaned;
 }
 
