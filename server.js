@@ -180,7 +180,7 @@ app.post('/api/book-appointment', (req, res) => {
       otp,
       createdAt: new Date().toISOString()
     };
-
+    //Can chaneg anytime if you want to use a database like MongoDB, or PostgrelSQL, For now we will just use an array to store the data in RAM for demo purposes.
     database.push(newBooking);
 
     //Since no database is used, the data will be stored in RAM and will be last until the server is restarted. This is for demo purposes only. In a real application you would use a database like MongoDB, PostgreSQL, etc. to persist data.
