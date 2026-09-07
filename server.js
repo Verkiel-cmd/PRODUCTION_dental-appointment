@@ -15,7 +15,10 @@ const PORT = process.env.PORT || 5000;
 // ===
 // Body parser for JSON payloads from fetch()
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE']
+}));
 
 // Serve static frontend files (HTML, CSS, client-side JS) from 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -34,9 +37,12 @@ const HTTPSMS_SENDER_NUMBER = process.env.HTTPSMS_PHONE_NUMBER || '+639934415338
 
 // Helper: Format phone number to international E.164 (+63)
 function formatPhoneNumber(phone) {
+  if (!phone) return '';
   let cleaned = phone.replace(/\D/g, '');
   if (cleaned.startsWith('0')) {
     cleaned = '63' + cleaned.slice(1);
+  }else if (!cleaned.startsWith('63')){
+    cleaned = '63' + cleaned;
   }
   return '+' + cleaned;
 }
