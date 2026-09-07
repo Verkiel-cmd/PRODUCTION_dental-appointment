@@ -118,15 +118,34 @@
             document.getElementById('customPopupMessage').style.display = 'none';
         }
 
-        document.getElementById('sendOTP').addEventListener('click', () => {
+        document.getElementById('sendOTP').addEventListener('click', async () => {
             // Handle OTP sending logic here
             const phone = document.getElementById('phone').value;
             if (!phone || phone.length < 10) {
                 showPopup("Please enter a valid mobile number");
                 return;
             }
-            showPopup("Demo Mode: OTP sent to " + phone + "! Please check your messages.");
+            showPopup("Sending OTP code to your phone...");
+
+            try {
+                const res = await fetch('/api/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    showPopup("OTP code sent! Check your SMS inbox.");
+                } else {
+                    showPopup(`Failed to send OTP: ${data.error}`);
+                }
+            } catch (err) {
+                showPopup(`Error sending OTP: ${err.message}`);
+            }
         });
+            //showPopup("Demo Mode: OTP sent to " + phone + "! Please check your messages.");
+        //});
 
         document.getElementById('bookingForm').addEventListener('submit', async (event) => {
             event.preventDefault();

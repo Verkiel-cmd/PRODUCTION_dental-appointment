@@ -10,9 +10,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// =============================================================================
-// 1. MIDDLEWARE
-// =============================================================================
+// ===
+// MIDDLEWARE
+// ===
 // Body parser for JSON payloads from fetch()
 app.use(express.json());
 app.use(cors());
@@ -20,10 +20,68 @@ app.use(cors());
 // Serve static frontend files (HTML, CSS, client-side JS) from 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// =============================================================================
-// 2. IN-MEMORY DATABASE (RAM Array)
-// =============================================================================
+// ====
+// MEMORY DATABASE (RAM Array)
+// ====
 const database = [];
+
+// In-memory OTP storage: { "09934415338": "123456" }
+const otpStore = new Map();
+
+// httpSMS Credentials (Reads from Environment Variables)
+const HTTPSMS_API_KEY = process.env.HTTPSMS_API_KEY;
+const HTTPSMS_SENDER_NUMBER = process.env.HTTPSMS_PHONE_NUMBER || '+639934415338';
+
+// Helper: Format phone number to international E.164 (+63)
+function formatPhoneNumber(phone) {
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('0')) {
+    cleaned = '63' + cleaned.slice(1);
+  }
+  return '+' + cleaned;
+}
+
+// ====
+// SEND OTP ENDPOINT
+// ====
+app.post('/api/send-otp', async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ success: false, error: 'Phone number is required.' });
+    }
+
+    const recipient = formatPhoneNumber(phone);
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store OTP in RAM temporarily
+    otpStore.set(recipient, generatedOtp);
+
+    // Call httpSMS API
+    const response = await fetch('https://api.httpsms.com/v1/messages/send', {
+      method: 'POST',
+      headers: {
+        'x-api-key': HTTPSMS_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        content: `Your Grace Dental Clinic OTP code is: ${generatedOtp}. Do not share this with anyone.`,
+        from: HTTPSMS_SENDER_NUMBER,
+        to: recipient
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      return res.status(200).json({ success: true, message: 'OTP sent successfully via SMS.' });
+    } else {
+      return res.status(500).json({ success: false, error: data.message || 'Failed to send SMS.' });
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 
 app.post('/api/book-appointment', (req, res) => {
