@@ -33,7 +33,7 @@ const otpStore = new Map();
 
 // httpSMS Credentials (Reads from Environment Variables)
 const HTTPSMS_API_KEY = process.env.HTTPSMS_API_KEY;
-const HTTPSMS_SENDER_NUMBER = process.env.HTTPSMS_PHONE_NUMBER || '+639934415338';
+const HTTPSMS_PHONE_NUMBER = process.env.HTTPSMS_PHONE_NUMBER || '+639934415338';
 
 // Helper: Format phone number to international E.164 (+63)
 function formatPhoneNumber(phone) {
@@ -133,7 +133,7 @@ app.post('/api/send-otp', async (req, res) => {
       },
       body: JSON.stringify({
         content: `Your Grace Dental Clinic OTP code is: ${generatedOtp}. Do not share this with anyone.`,
-        from: HTTPSMS_SENDER_NUMBER,
+        from: HTTPSMS_PHONE_NUMBER,
         to: recipient
       })
     });
