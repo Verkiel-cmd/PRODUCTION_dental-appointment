@@ -11,12 +11,27 @@
             --success: #10b981;
         }
 
+        html.dark-theme {
+            --primary: #38bdf8;
+            --primary-dark: #0284c7;
+            --accent: #0284c7;
+            --bg: #0f172a;
+            --surface:#0f172a;
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --border: #334155;
+            --success: #10b981;
+        }
+        /*————————————————————————GLOBALLY WHOLE BODY TRANSITIONS AND EFFECTS———————————————————————————————————————*/
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;   /* ← ADD THIS */
+
         }
+        /*——————————————————————————————————————————————————————————————————————————————————————————————————————————*/
 
         body {
             background-color: var(--bg);
@@ -54,6 +69,53 @@
             text-align: center;
             margin-bottom: 2rem;
         }
+        .toggle {
+            padding: 0.5rem 1rem;
+            position: absolute;
+            right: 12rem;
+            border-radius: 1rem;
+            background-color: var(--primary);
+            outline: none;
+            border: none;
+            transition: all 0.3s ease-in-out;
+        }
+        .toggle:hover{
+            transition: all 0.3s ease-in-out;
+            transform: transLateY(-9px);
+            transform: scale(0.9);
+            transform: cubic-bezier(0, 0.9, 0.57, 1);
+
+        }
+         /* SWITCH 2 — TEXT vs EMOJI (width-based)
+       On this small screen, hide the word... */
+        .toggle-label {
+            display: inline;
+        }   /* mobile: hide text */
+
+        /* ...and unlock both emoji slots. */
+        .toggle-icon { 
+            display: none; 
+        }
+
+        /* SWITCH 3 — SUN vs MOON (theme-based, THE core pattern)
+        Default state first (light mode / class absent): hide moon. */
+        .moon {
+            display: none;
+        }
+        /* Overridden state: html.dark-theme .moon is TWO selectors, so it's more
+        specific than plain .moon and wins the cascade — dark mode shows moon. */
+        html.dark-theme .moon {
+            display: inline;
+        }
+        /* And in dark mode hide the sun, so exactly ONE emoji is visible. */
+        html.dark-theme .sun {
+            display: none;
+        }
+
+        header { 
+            padding: 0.75rem; /* compresses the header bar to make room at 350px */
+        }
+
 
         .hero h1 {
             font-size: 1.85rem;
@@ -102,6 +164,8 @@
             width: 100%;
             padding: 0.65rem 0.85rem;
             border: 1px solid var(--border);
+            background-color: var(--surface);
+            color: var(--text);
             border-radius: 6px;
             font-size: 0.95rem;
             outline: none;
@@ -218,3 +282,46 @@
         border-radius: 6px;
         cursor: pointer;
     }
+
+  @media (max-width: 500px) and (min-width: 300px) {
+    /* SWITCH 1 — WIDTH FILTER
+       "Only between 300px and 500px wide." Both bounds must be true.
+       Outside this range NONE of the rules below apply. */
+
+    .toggle {
+        padding: 0.2rem 0.4rem; /* shrink hit-area so the tiny emoji sits tight */
+        right: 10.2rem;         /* NOTE: absolute-position holdover — keep only if
+                                   .toggle still uses position:absolute elsewhere;
+                                   otherwise this line does nothing/allowed to overlap */
+    }
+
+    /* SWITCH 2 — TEXT vs EMOJI (width-based)
+       On this small screen, hide the word... */
+    .toggle-label {
+         display: none;
+    }   /* mobile: hide text */
+
+    /* ...and unlock both emoji slots. */
+    .toggle-icon { 
+        display: inline; 
+    }
+
+    /* SWITCH 3 — SUN vs MOON (theme-based, THE core pattern)
+       Default state first (light mode / class absent): hide moon. */
+    .moon {
+        display: none;
+    }
+    /* Overridden state: html.dark-theme .moon is TWO selectors, so it's more
+       specific than plain .moon and wins the cascade — dark mode shows moon. */
+    html.dark-theme .moon {
+        display: inline;
+    }
+    /* And in dark mode hide the sun, so exactly ONE emoji is visible. */
+    html.dark-theme .sun {
+        display: none;
+    }
+
+    header { 
+        padding: 0.75rem; /* compresses the header bar to make room at 350px */
+     }
+}

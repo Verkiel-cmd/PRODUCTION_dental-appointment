@@ -12,6 +12,11 @@
         <div class="logo">
             Dental Clinic
         </div>
+         <button class="toggle" id="theme-toggle" title="Toggle dark mode">
+            <span class="toggle-label">Dark Mode</span>
+            <span class="toggle-icon sun" aria-hidden="true">☀️</span>
+            <span class="toggle-icon moon" aria-hidden="true">🌙</span>
+       </button>
         <div>
             <span class="badge">● Online Booking Active</span>
         </div>
@@ -191,6 +196,61 @@
 
                  await sendBookingData();
 
+            });
+
+
+             (function () {
+                const saved = localStorage.getItem("theme");
+                const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+                const useDark = saved ? saved === "dark" : prefersDark;
+                if (useDark) {
+                document.documentElement.classList.add("dark-theme");
+                }
+            })();
+
+                        // `root` = the real <html> element on the page. This is the ONE
+            // element whose class we ever touch. Nothing else in the DOM
+            // gets a class or inline style added to it by this script.
+            const root = document.documentElement;
+
+            const iconBtn = document.getElementById('theme-toggle');
+            const checkbox = document.getElementById('theme-checkbox');
+
+            // Just asks: "does <html> currently have class='dark-theme'?"
+            // Returns true or false. Doesn't change anything.
+            function isDark() {
+                return root.classList.contains('dark-theme');
+            }
+
+            // The ONLY function that changes the theme. Everything else in
+            // this file just calls this with true or false.
+            function setTheme(dark) {
+                // Second argument to .toggle() is a force flag:
+                // true  -> make sure the class IS there
+                // false -> make sure the class is NOT there
+                // (this is why we don't need toggle()'s default flip-it behavior here —
+                // we already know exactly which state we want)
+                root.classList.toggle('dark-theme', dark);
+
+                // Remember the choice so it survives a page reload.
+                // Step-by-step of what this line does is in the next answer below.
+                localStorage.setItem('theme', dark ? 'dark' : 'light');
+            }
+
+            // Icon button: clicking it means "flip whatever it currently is"
+            iconBtn?.addEventListener('click', () => setTheme(!isDark()));
+
+            // Switch: the checkbox's own checked state IS the desired theme,
+            // so we just pass that straight through instead of flipping anything
+            checkbox?.addEventListener('change', () => setTheme(checkbox.checked));
+
+            // Listens for the OS-level theme changing WHILE this tab is open
+            // (e.g. user's laptop switches to dark mode at sunset)
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                // Only auto-follow the OS if the person has never manually clicked
+                // the toggle on this site. A manual choice always wins permanently.
+                const hasManualChoice = localStorage.getItem('theme') !== null;
+                if (!hasManualChoice) setTheme(e.matches);
             });
 
 
