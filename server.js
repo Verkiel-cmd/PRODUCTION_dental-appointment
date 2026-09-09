@@ -203,6 +203,17 @@ app.post('/api/book-appointment', (req, res) => {
   }
 });
 
+// Endpoint for Android App to fetch the list of bookings——————————————————————————————————————————————————————————————————
+app.get('/api/appointments', (req, res) => {
+  try {
+    // Just send the 'database' array back as JSON
+    return res.status(200).json(database);
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to fetch appointments.' });
+  }
+});
+// ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+
 
 /*app.delete('/api/demo/items/:id', (req, res) => {
   try {
