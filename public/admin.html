@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Grace Dental Clinic</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <header>
+        <div class="logo">Dental Clinic · Admin</div>
+    </header>
+
+    <div class="login-wrap">
+        <div class="booking-card">
+            <div class="tabs" role="tablist">
+                <button type="button" class="tab" id="tabLogin" role="tab" aria-selected="true">Log In</button>
+                <button type="button" class="tab" id="tabRegister" role="tab" aria-selected="false">Register</button>
+            </div>
+
+            <h1 id="title">Admin Login</h1>
+            <p class="sub" id="subtitle">Sign in to manage appointments</p>
+            <div id="error" class="error"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="btn" id="loginBtn">Log In</button>
+            </form>
+
+            <form id="registerForm" hidden>
+                <div class="form-group">
+
+                    <label for="regInvite">Invite code</label>
+                    <input type="password" id="regInvite" required>
+
+                    <label for="regUsername">Username</label>
+                    <input type="text" id="regUsername" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Password</label>
+                    <input type="password" id="regPassword" autocomplete="new-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="regConfirm">Confirm password</label>
+                    <input type="password" id="regConfirm" autocomplete="new-password" required>
+                </div>
+                <button type="submit" class="btn" id="registerBtn">Register</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Same-origin when served by the Node server; absolute URL if opened from Netlify
+        const API = location.hostname.endsWith('netlify.app')
+            ? 'https://dental-appointment-vozo.onrender.com' : '';
+
+        // Keep the saved theme
+        if (localStorage.getItem('theme') === 'dark') 
+        document.documentElement.classList.add('dark-theme');
+
+        const errorBox = document.getElementById('error');
+        const btn = document.getElementById('loginBtn');
+        const regBtn = document.getElementById('registerBtn');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const tabLogin = document.getElementById('tabLogin');
+        const tabRegister = document.getElementById('tabRegister');
+
+        // ----- Switch between Log In and Register -----
+        function showMode(mode) {
+            const isLogin = mode === 'login';
+            loginForm.hidden = !isLogin;
+            registerForm.hidden = isLogin;
+            tabLogin.setAttribute('aria-selected', isLogin);
+            tabRegister.setAttribute('aria-selected', !isLogin);
+            document.getElementById('title').textContent = isLogin ? 'Admin Login' : 'Create Admin Account';
+            document.getElementById('subtitle').textContent = isLogin
+                ? 'Sign in to manage appointments' : 'Register to manage appointments';
+            errorBox.style.display = 'none';
+            history.replaceState(null, '', isLogin ? location.pathname : '#register');
+        }
+        tabLogin.addEventListener('click', () => showMode('login'));
+        tabRegister.addEventListener('click', () => showMode('register'));
+        if (location.hash === '#register') 
+        showMode('register');
+
+        // ----- Login (unchanged) -----
+        // Already logged in? Skip straight to the dashboard.
+        fetch(`${API}/api/admin/login`, { 
+            credentials: 'include' 
+        })
+            .then(r => r.json())
+            .then(d => { if (d.isAdmin) 
+                location.replace('dashboard.html'); 
+            })
+            .catch(() => {});
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorBox.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Logging in...';
+
+            try {
+                const res = await fetch(`${API}/api/admin/login`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value,
+                        password: document.getElementById('password').value
+                    })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    location.href = 'dashboard.html';
+                    return;
+                }
+                errorBox.textContent = data.error || 'Login failed.';
+            } catch (err) {
+                errorBox.textContent = 'Cannot reach the server: ' + err.message;
+            }
+            errorBox.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Log In';
+        });
+
+        // ----- Register -----
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorBox.style.display = 'none';
+
+            const password = document.getElementById('regPassword').value;
+            if (password !== document.getElementById('regConfirm').value) {
+                errorBox.textContent = 'Passwords do not match.';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            regBtn.disabled = true;
+            regBtn.textContent = 'Registering...';
+
+            try {
+                // Assumed endpoint — change to match your server
+                const res = await fetch(`${API}/api/admin/register`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('regUsername').value,
+                        password: document.getElementById('regPassword').value,
+                        inviteCode: document.getElementById('regInvite').value
+                    })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    registerForm.reset();
+                    regBtn.disabled = false;
+                    regBtn.textContent = 'Register';
+                    showMode('login');
+                    return;
+                }
+                errorBox.textContent = data.error || 'Registration failed.';
+            } catch (err) {
+                errorBox.textContent = 'Cannot reach the server: ' + err.message;
+            }
+            errorBox.style.display = 'block';
+            regBtn.disabled = false;
+            regBtn.textContent = 'Register';
+        });
+    </script>
+</body>
+</html>

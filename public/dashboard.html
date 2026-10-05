@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Grace Dental Clinic</title>
+    <link rel="stylesheet" href="dashboard.css">
+
+</head>
+<body>
+    <header>
+        <div class="logo">Dental Clinic · Dashboard</div>
+        <div class="top-actions">
+            <button class="btn btn-outline" id="themeBtn" type="button">🌓</button>
+            <button class="btn btn-outline" id="refreshBtn" type="button">Refresh</button>
+            <button class="btn" id="logoutBtn" type="button">Log Out</button>
+        </div>
+    </header>
+
+    <div class="container wide">
+        <div class="stats">
+            <div class="stat"><b id="sTotal">0</b><span>Total</span></div>
+            <div class="stat"><b id="sPending">0</b><span>Pending</span></div>
+            <div class="stat"><b id="sConfirmed">0</b><span>Confirmed</span></div>
+            <div class="stat"><b id="sCompleted">0</b><span>Completed</span></div>
+            <div class="stat"><b id="sCancelled">0</b><span>Cancelled</span></div>
+        </div>
+
+        <div class="toolbar">
+            <input type="text" id="search" placeholder="Search name, phone, or ID...">
+            <select id="filterStatus">
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Patient</th><th>Phone</th><th>Service</th>
+                        <th>Date</th><th>Time</th><th>Status</th><th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="rows"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Same-origin when served by the Node server; absolute URL if opened from Netlify
+        const API = location.hostname.endsWith('netlify.app')
+            ? 'https://dental-appointment-vozo.onrender.com' : '';
+
+        const SERVICES = {
+            cleaning: 'Teeth Cleaning',
+            checkup: 'Consultation & Checkup',
+            extraction: 'Tooth Extraction',
+            whitening: 'Teeth Whitening',
+            braces: 'Braces Consultation'
+        };
+        const STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'];
+
+        let appointments = [];
+
+        // ----- theme -----
+        if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark-theme');
+        document.getElementById('themeBtn').addEventListener('click', () => {
+            const dark = document.documentElement.classList.toggle('dark-theme');
+            localStorage.setItem('theme', dark ? 'dark' : 'light');
+        });
+
+        // ----- helpers -----
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        function toast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.display = 'block';
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => (t.style.display = 'none'), 2500);
+        }
+
+        function formatTime(t) {
+            const [h, m] = String(t).split(':').map(Number);
+            if (Number.isNaN(h)) return t;
+            return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+        }
+
+        async function api(path, options = {}) {
+            const res = await fetch(API + path, {
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                ...options
+            });
+            if (res.status === 401) {
+                location.replace('admin.html');
+                throw new Error('Session expired');
+            }
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Request failed');
+            return data;
+        }
+
+        // ----- render -----
+        function render() {
+            const q = document.getElementById('search').value.trim().toLowerCase();
+            const status = document.getElementById('filterStatus').value;
+
+            const list = appointments.filter(a =>
+                (!status || a.status === status) &&
+                (!q || [a.fullname, a.phone, a.id].some(v => String(v).toLowerCase().includes(q)))
+            );
+
+            document.getElementById('sTotal').textContent = appointments.length;
+            STATUSES.forEach(s => {
+                document.getElementById('s' + s[0].toUpperCase() + s.slice(1)).textContent =
+                    appointments.filter(a => a.status === s).length;
+            });
+
+            const tbody = document.getElementById('rows');
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty">No appointments found.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = list.map(a => `
+                <tr>
+                    <td><strong>${esc(a.fullname)}</strong><br><small style="color:var(--muted)">${esc(a.id)}</small></td>
+                    <td>${esc(a.phone)}</td>
+                    <td>${esc(SERVICES[a.service] || a.service)}</td>
+                    <td>${esc(a.date)}</td>
+                    <td>${esc(formatTime(a.time))}</td>
+                    <td>
+                        <span class="pill ${esc(a.status)}">${esc(a.status)}</span>
+                        <select data-id="${esc(a.id)}" class="status-select">
+                            ${STATUSES.map(s => `<option value="${s}" ${s === a.status ? 'selected' : ''}>${s}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td><button class="btn-del" data-id="${esc(a.id)}">Delete</button></td>
+                </tr>
+            `).join('');
+        }
+
+        // ----- actions -----
+        async function load() {
+            try {
+                appointments = await api('/api/appointments');
+                render();
+            } catch (err) {
+                if (err.message !== 'Session expired') {
+                    document.getElementById('rows').innerHTML =
+                        `<tr><td colspan="7" class="empty">${esc(err.message)}</td></tr>`;
+                }
+            }
+        }
+
+        document.getElementById('rows').addEventListener('change', async (e) => {
+            if (!e.target.classList.contains('status-select')) return;
+            try {
+                await api(`/api/appointments/${encodeURIComponent(e.target.dataset.id)}/status`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ status: e.target.value })
+                });
+                toast('Status updated');
+            } catch (err) { toast(err.message); }
+            load();
+        });
+
+        document.getElementById('rows').addEventListener('click', async (e) => {
+            if (!e.target.classList.contains('btn-del')) return;
+            if (!confirm('Delete this appointment permanently?')) return;
+            try {
+                await api(`/api/appointments/${encodeURIComponent(e.target.dataset.id)}`, { method: 'DELETE' });
+                toast('Appointment deleted');
+            } catch (err) { toast(err.message); }
+            load();
+        });
+
+        document.getElementById('search').addEventListener('input', render);
+        document.getElementById('filterStatus').addEventListener('change', render);
+        document.getElementById('refreshBtn').addEventListener('click', () => { load(); toast('Refreshed'); });
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try { await fetch(`${API}/api/admin/logout`, { method: 'POST', credentials: 'include' }); } catch {}
+            location.replace('admin.html');
+        });
+
+        // Auth check on load (redirects to login on 401), then auto-refresh every 30s
+        load();
+        setInterval(load, 30000);
+    </script>
+</body>
+</html>
