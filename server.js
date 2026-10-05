@@ -392,8 +392,8 @@ app.get('/api/appointments', requireAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT id, fullname, service,
-              DATE_FORMAT(appt_date, '%Y-%m-%d') AS date,
-              appt_time AS time, phone, status, created_at AS createdAt
+              DATE_FORMAT(date, '%Y-%m-%d') AS date,
+              time AS time, phone, status, created_at AS createdAt
        FROM appointments
        ORDER BY created_at DESC`
     );
