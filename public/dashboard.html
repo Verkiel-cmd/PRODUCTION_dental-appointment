@@ -53,9 +53,6 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        // Same-origin when served by the Node server; absolute URL if opened from Netlify
-        const API = location.hostname.endsWith('netlify.app')
-            ? 'https://dental-appointment-vozo.onrender.com' : '';
 
         const SERVICES = {
             cleaning: 'Teeth Cleaning',
@@ -94,7 +91,7 @@
         }
 
         async function api(path, options = {}) {
-            const res = await fetch(API + path, {
+            const res = await fetch(path, {
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 ...options
@@ -188,7 +185,7 @@
         document.getElementById('refreshBtn').addEventListener('click', () => { load(); toast('Refreshed'); });
 
         document.getElementById('logoutBtn').addEventListener('click', async () => {
-            try { await fetch(`${API}/api/admin/logout`, { method: 'POST', credentials: 'include' }); } catch {}
+            try { await fetch(`/api/admin/logout`, { method: 'POST', credentials: 'include' }); } catch {}
             location.replace('admin.html');
         });
 

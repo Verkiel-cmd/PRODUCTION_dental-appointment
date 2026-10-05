@@ -57,10 +57,6 @@
     </div>
 
     <script>
-        // Same-origin when served by the Node server; absolute URL if opened from Netlify
-        const API = location.hostname.endsWith('netlify.app')
-            ? 'https://dental-appointment-vozo.onrender.com' : '';
-
         // Keep the saved theme
         if (localStorage.getItem('theme') === 'dark') 
         document.documentElement.classList.add('dark-theme');
@@ -93,7 +89,7 @@
 
         // ----- Login (unchanged) -----
         // Already logged in? Skip straight to the dashboard.
-        fetch(`${API}/api/admin/login`, { 
+        fetch(`/api/admin/login`, { 
             credentials: 'include' 
         })
             .then(r => r.json())
@@ -109,7 +105,7 @@
             btn.textContent = 'Logging in...';
 
             try {
-                const res = await fetch(`${API}/api/admin/login`, {
+                const res = await fetch(`/api/admin/login`, {
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
@@ -149,7 +145,7 @@
 
             try {
                 // Assumed endpoint — change to match your server
-                const res = await fetch(`${API}/api/admin/register`, {
+                const res = await fetch(`/api/admin/register`, {
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
