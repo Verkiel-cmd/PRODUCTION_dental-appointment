@@ -110,10 +110,10 @@ const makeLimiter = rateLimit({
     message: { error: 'Too many requests, please try again later.'},
     standardHeaders: true,
     legacyHeaders: false,
-    validate: { ip: false },           // ← disable broken startup IP check
-    keyGenerator: (req) => req.ip      // ← proper runtime key (inherits trust proxy)
-         || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
-         || 'unknown',
+    validate: { ip: false, trustProxy: false },  // disable both startup checks
+    keyGenerator: (req) => ipKeyGenerator(req.ip  // ← use library helper
+        || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+        || 'unknown'),
 });
 
 const otpLimiter = makeLimiter(5);     // each request costs you an SMS
