@@ -537,7 +537,13 @@ app.delete('/api/appointments/:id', requireAdmin, async (req, res) => {
 
 
 
-
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  if (req.path.startsWith('/api/')) {
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+  next(err); // Let non-API errors fall through
+});
  
 app.get(/(.*)/, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -627,8 +633,9 @@ initDb()
   }
 });*/
 
-app.get(/(.*)/, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.get(/^\/(?!api\/).*/, (req, res) => {
+  // Only matches non-API routes
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {
