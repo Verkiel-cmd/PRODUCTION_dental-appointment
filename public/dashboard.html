@@ -231,6 +231,17 @@
             location.replace('admin.html');
         });
 
+
+        async function generateCode() {
+        try {
+            const { code, expiresAt } = await api('/api/admin/invite-codes', { method: 'POST' });
+            document.getElementById('newCode').value = code;
+            document.getElementById('codeOutput').hidden = false;
+            loadInviteCodes();
+            toast('Code generated');
+        } catch (err) { toast(err.message); }
+        }
+
        
 
         function inviteCodeRowHtml(c) {
@@ -257,18 +268,6 @@
             const codes = await api('/api/admin/invite-codes');
             const tbody = document.getElementById('codesBody');
             tbody.innerHTML = codes.map(inviteCodeRowHtml).join('');
-        } catch (err) { toast(err.message); }
-        }
-
-
-
-        async function generateCode() {
-        try {
-            const { code, expiresAt } = await api('/api/admin/invite-codes', { method: 'POST' });
-            document.getElementById('newCode').value = code;
-            document.getElementById('codeOutput').hidden = false;
-            loadInviteCodes();
-            toast('Code generated');
         } catch (err) { toast(err.message); }
         }
 
