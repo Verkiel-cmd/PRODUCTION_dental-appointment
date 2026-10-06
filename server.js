@@ -81,6 +81,7 @@ const sessionStore = new MySQLStore({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
+    ssl: process.env.DB_SSL === 'true' ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined, 
     port: Number(process.env.MYSQLPORT || process.env.MYSQLPORT || 4000),
     clearExpired: true,
     checkExpirationInterval: 900000,
@@ -426,7 +427,7 @@ app.post('/api/admin/register', registerLimiter, async (req, res) => {
   
   const okUser = process.env.ADMIN_USERNAME && safeEqual(username || '', process.env.ADMIN_USERNAME);
   const okPass = process.env.ADMIN_PASSWORD && safeEqual(password || '', process.env.ADMIN_PASSWORD);
-  
+
   if (!okUser || !okPass) {
     return res.status(401).json({ success: false, error: 'Invalid credentials.' });
   }
