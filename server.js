@@ -110,8 +110,8 @@ const makeLimiter = rateLimit({
     message: { error: 'Too many requests, please try again later.'},
     standardHeaders: true,
     legacyHeaders: false,
-    validate: { ip: false, trustProxy: false },  // disable BOTH startup checks
-    keyGenerator: (req) => ipKeyGenerator(       // wrap with library helper
+    validate: { ip: false, trustProxy: false },  // ← disable startup validation
+    keyGenerator: (req) => ipKeyGenerator(       // ← wrap with library helper
         req.ip
         || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
         || 'unknown'
