@@ -10,30 +10,8 @@
 <body>
     <header>
         <div class="logo">Dental Clinic · Dashboard</div>
-
-
-        <!-- In dashboard.html tabs section -->
         <button class="tab active" data-tab="appointments">Appointments</button>
         <button class="tab" data-tab="inviteCodes">Invite Codes</button>
-
-        <!-- New tab content -->
-        <div class="tab-content" id="tab-inviteCodes" hidden>
-        <h3>Admin Invite Codes</h3>
-        <button id="genCodeBtn" class="btn">Generate New Code</button>
-        <div id="codeOutput" class="code-output" hidden>
-            <input type="text" id="newCode" readonly>
-            <button onclick="copyCode()">Copy</button>
-            <small>Expires in 7 days. One-time use.</small>
-        </div>
-        <table id="codesTable">
-            <thead>
-            <tr><th>Code</th><th>Created</th><th>Expires</th><th>Status</th><th>Action</th></tr>
-            </thead>
-            <tbody id="codesBody"></tbody>
-        </table>
-        </div>
-
-
         <div class="top-actions">
             <button class="btn btn-outline" id="themeBtn" type="button">🌓</button>
             <button class="btn btn-outline" id="refreshBtn" type="button">Refresh</button>
@@ -73,8 +51,24 @@
                 </thead>
                 <tbody id="rows"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
             </table>
-        </div>
-    </div>
+            </div>
+            </div>
+
+             <div class="tab-content" id="tab-inviteCodes" hidden>
+                <h3>Admin Invite Codes</h3>
+                <button id="genCodeBtn" class="btn">Generate New Code</button>
+                <div id="codeOutput" class="code-output" hidden>
+                    <input type="text" id="newCode" readonly>
+                    <button>Copy</button>
+                    <small>Expires in 7 days. One-time use.</small>
+                </div>
+                <table id="codesTable">
+                    <thead>
+                    <tr><th>Code</th><th>Created</th><th>Expires</th><th>Status</th><th>Action</th></tr>
+                    </thead>
+                    <tbody id="codesBody"></tbody>
+                </table>
+            </div>
 
     <div class="toast" id="toast"></div>
 
@@ -131,6 +125,44 @@
             return data;
         }
 
+        function statusSelectHtml(a) {
+        // Build one <option> per status; mark the current one 'selected'
+        const options = STATUSES.map(s =>
+            `<option value="${s}" ${s === a.status ? 'selected' : ''}>${s}</option>`
+        ).join('');
+
+        // Wrap the options in a <select> tagged with this appointment's id
+        return `<select data-id="${esc(a.id)}" class="status-select">${options}</select>`;
+       }
+
+           // One appointment's row of HTML
+        function appointmentRowHtml(a) {
+            return `
+            <tr>
+                <!-- Patient name + id -->
+                <td><strong>${esc(a.fullname)}</strong><br><small>${esc(a.id)}</small></td>
+
+                <!-- Phone -->
+                <td>${esc(a.phone)}</td>
+
+                <!-- Service: look up the full name, fall back to the raw value -->
+                <td>${esc(SERVICES[a.service] || a.service)}</td>
+
+                <!-- Date + time -->
+                <td>${esc(a.date)}</td>
+                <td>${esc(formatTime(a.time))}</td>
+
+                <!-- Status pill + dropdown -->
+                <td>
+                    <span class="pill ${esc(a.status)}">${esc(a.status)}</span>
+                    ${statusSelectHtml(a)}
+                </td>
+
+                <!-- Delete button -->
+                <td><button class="btn-del" data-id="${esc(a.id)}">Delete</button></td>
+            </tr>`;
+        }
+
         // ----- render -----
         function render() {
             const q = document.getElementById('search').value.trim().toLowerCase();
@@ -152,24 +184,8 @@
                 tbody.innerHTML = '<tr><td colspan="7" class="empty">No appointments found.</td></tr>';
                 return;
             }
-
-            tbody.innerHTML = list.map(a => `
-                <tr>
-                    <td><strong>${esc(a.fullname)}</strong><br><small style="color:var(--muted)">${esc(a.id)}</small></td>
-                    <td>${esc(a.phone)}</td>
-                    <td>${esc(SERVICES[a.service] || a.service)}</td>
-                    <td>${esc(a.date)}</td>
-                    <td>${esc(formatTime(a.time))}</td>
-                    <td>
-                        <span class="pill ${esc(a.status)}">${esc(a.status)}</span>
-                        <select data-id="${esc(a.id)}" class="status-select">
-                            ${STATUSES.map(s => `<option value="${s}" ${s === a.status ? 'selected' : ''}>${s}</option>`).join('')}
-                        </select>
-                    </td>
-                    <td><button class="btn-del" data-id="${esc(a.id)}">Delete</button></td>
-                </tr>
-            `).join('');
-        }
+            tbody.innerHTML = list.map(appointmentRowHtml).join('');
+            }
 
         // ----- actions -----
         async function load() {
@@ -215,33 +231,36 @@
             location.replace('admin.html');
         });
 
-        // Auth check on load (redirects to login on 401), then auto-refresh every 30s
-        load();
-        setInterval(load, 30000);
+       
 
-        showTab('appointments');
+        function inviteCodeRowHtml(c) {
+                return `
+                <tr>
+                    <!-- The code itself -->
+                    <td><code>${esc(c.code)}</code></td>
 
+                    <!-- Created / expires dates -->
+                    <td>${new Date(c.created_at).toLocaleString()}</td>
+                    <td>${new Date(c.expires_at).toLocaleString()}</td>
+
+                    <!-- Status pill -->
+                    <td><span class="pill ${c.status}">${c.status}</span></td>
+
+                    <!-- Revoke button, only when the code is still unused -->
+                    <td>${c.status === 'unused' ? `<button class="btn btn-sm btn-revoke" data-code="${esc(c.code)}">Revoke</button>` : ''}</td>
+                </tr>`;
+            }
 
         // ----- Invite Codes Tab -----
         async function loadInviteCodes() {
         try {
             const codes = await api('/api/admin/invite-codes');
             const tbody = document.getElementById('codesBody');
-            tbody.innerHTML = codes.map(c => `
-            <tr>
-                <td><code>${esc(c.code)}</code></td>
-                <td>${new Date(c.created_at).toLocaleString()}</td>
-                <td>${new Date(c.expires_at).toLocaleString()}</td>
-                <td><span class="pill ${c.status}">${c.status}</span></td>
-                <td>
-                ${c.status === 'unused' 
-                    ? `<button class="btn btn-sm" onclick="revokeCode('${esc(c.code)}')">Revoke</button>`
-                    : ''}
-                </td>
-            </tr>
-            `).join('');
+            tbody.innerHTML = codes.map(inviteCodeRowHtml).join('');
         } catch (err) { toast(err.message); }
         }
+
+
 
         async function generateCode() {
         try {
@@ -269,6 +288,11 @@
         toast('Copied to clipboard');
         }
 
+        document.getElementById('codesBody').addEventListener('click', (e) => {
+           if (e.target.classList.contains('btn-revoke')) revokeCode(e.target.dataset.code);
+        });
+        document.querySelector('#codeOutput button').addEventListener('click', copyCode);
+
         // Tab switching for invite codes
         function showTab(tab) {
         document.querySelectorAll('.tab-content').forEach(c => c.hidden = true);
@@ -285,6 +309,13 @@
 
         // Hook up invite codes buttons
         document.getElementById('genCodeBtn')?.addEventListener('click', generateCode);
+
+        function init() {
+            load();
+            setInterval(load, 30000);
+            showTab('appointments');
+        }
+        init();
 
     </script>
 </body>
