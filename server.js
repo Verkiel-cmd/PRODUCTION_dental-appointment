@@ -90,17 +90,12 @@ const sessionStore = new MySQLStore({
 
 const MySQLStore = MySQLStoreFactory(session);
 // Create pool with SSL config explicitly
+
 const sessionStore = new MySQLStore({
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT || process.env.MYSQLPORT || 4000),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    ssl: process.env.DB_SSL === 'true' ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined,
     clearExpired: true,
     checkExpirationInterval: 900000,
     expiration: 86400000,
-});
+}, db);
 
 /*const sessionStore = new MySQLStore({
     // Pass the pre-configured pool
