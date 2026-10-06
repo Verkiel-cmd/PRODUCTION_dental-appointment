@@ -126,22 +126,24 @@ async function initDb() {
       id          VARCHAR(40)  PRIMARY KEY,
       fullname    VARCHAR(120) NOT NULL,
       service     VARCHAR(120) NOT NULL,
-      date   DATE         NOT NULL,
-      time   VARCHAR(20)  NOT NULL,
+      \`date\`     DATE         NOT NULL,
+      \`time\`     VARCHAR(20)  NOT NULL,
       phone       VARCHAR(20)  NOT NULL,
       otp         VARCHAR(20),
       status      ENUM('pending','confirmed','completed','cancelled') NOT NULL DEFAULT 'pending',
       created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
+  `);
 
+  await db.query(`
     CREATE TABLE IF NOT EXISTS admin_invite_codes (
-    code        VARCHAR(64)  PRIMARY KEY,
-    created_by  VARCHAR(120) NOT NULL,
-    created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-    used_by     VARCHAR(120) NULL,
-    used_at     TIMESTAMP    NULL,
-    expires_at  TIMESTAMP    NOT NULL
-  )
+      code        VARCHAR(64)  PRIMARY KEY,
+      created_by  VARCHAR(120) NOT NULL,
+      created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+      used_by     VARCHAR(120) NULL,
+      used_at     TIMESTAMP    NULL,
+      expires_at  TIMESTAMP    NOT NULL
+    )
   `);
 
   console.log('Database ready.');
