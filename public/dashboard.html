@@ -10,6 +10,30 @@
 <body>
     <header>
         <div class="logo">Dental Clinic · Dashboard</div>
+
+
+        <!-- In dashboard.html tabs section -->
+        <button class="tab active" data-tab="appointments">Appointments</button>
+        <button class="tab" data-tab="inviteCodes">Invite Codes</button>
+
+        <!-- New tab content -->
+        <div class="tab-content" id="tab-inviteCodes" hidden>
+        <h3>Admin Invite Codes</h3>
+        <button id="genCodeBtn" class="btn">Generate New Code</button>
+        <div id="codeOutput" class="code-output" hidden>
+            <input type="text" id="newCode" readonly>
+            <button onclick="copyCode()">Copy</button>
+            <small>Expires in 7 days. One-time use.</small>
+        </div>
+        <table id="codesTable">
+            <thead>
+            <tr><th>Code</th><th>Created</th><th>Expires</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody id="codesBody"></tbody>
+        </table>
+        </div>
+
+
         <div class="top-actions">
             <button class="btn btn-outline" id="themeBtn" type="button">🌓</button>
             <button class="btn btn-outline" id="refreshBtn" type="button">Refresh</button>
@@ -17,7 +41,8 @@
         </div>
     </header>
 
-    <div class="container wide">
+    <div class="tab-content" id="tab-appointments">
+        <div class="container wide">
         <div class="stats">
             <div class="stat"><b id="sTotal">0</b><span>Total</span></div>
             <div class="stat"><b id="sPending">0</b><span>Pending</span></div>
@@ -25,6 +50,7 @@
             <div class="stat"><b id="sCompleted">0</b><span>Completed</span></div>
             <div class="stat"><b id="sCancelled">0</b><span>Cancelled</span></div>
         </div>
+    </div>
 
         <div class="toolbar">
             <input type="text" id="search" placeholder="Search name, phone, or ID...">
@@ -192,6 +218,74 @@
         // Auth check on load (redirects to login on 401), then auto-refresh every 30s
         load();
         setInterval(load, 30000);
+
+        showTab('appointments');
+
+
+        // ----- Invite Codes Tab -----
+        async function loadInviteCodes() {
+        try {
+            const codes = await api('/api/admin/invite-codes');
+            const tbody = document.getElementById('codesBody');
+            tbody.innerHTML = codes.map(c => `
+            <tr>
+                <td><code>${esc(c.code)}</code></td>
+                <td>${new Date(c.created_at).toLocaleString()}</td>
+                <td>${new Date(c.expires_at).toLocaleString()}</td>
+                <td><span class="pill ${c.status}">${c.status}</span></td>
+                <td>
+                ${c.status === 'unused' 
+                    ? `<button class="btn btn-sm" onclick="revokeCode('${esc(c.code)}')">Revoke</button>`
+                    : ''}
+                </td>
+            </tr>
+            `).join('');
+        } catch (err) { toast(err.message); }
+        }
+
+        async function generateCode() {
+        try {
+            const { code, expiresAt } = await api('/api/admin/invite-codes', { method: 'POST' });
+            document.getElementById('newCode').value = code;
+            document.getElementById('codeOutput').hidden = false;
+            loadInviteCodes();
+            toast('Code generated');
+        } catch (err) { toast(err.message); }
+        }
+
+        async function revokeCode(code) {
+        if (!confirm('Revoke this unused code?')) return;
+        try {
+            await api(`/api/admin/invite-codes/${encodeURIComponent(code)}`, { method: 'DELETE' });
+            loadInviteCodes();
+            toast('Code revoked');
+        } catch (err) { toast(err.message); }
+        }
+
+        function copyCode() {
+        const input = document.getElementById('newCode');
+        input.select();
+        document.execCommand('copy');
+        toast('Copied to clipboard');
+        }
+
+        // Tab switching for invite codes
+        function showTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(c => c.hidden = true);
+        document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + tab).hidden = false;
+        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+        if (tab === 'inviteCodes') loadInviteCodes();
+        }
+
+        // Hook up tab buttons
+        document.querySelectorAll('.tab').forEach(btn => {
+        btn.addEventListener('click', () => showTab(btn.dataset.tab));
+        });
+
+        // Hook up invite codes buttons
+        document.getElementById('genCodeBtn')?.addEventListener('click', generateCode);
+
     </script>
 </body>
 </html>

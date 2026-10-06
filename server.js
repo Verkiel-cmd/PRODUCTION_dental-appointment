@@ -132,9 +132,22 @@ async function initDb() {
       status      ENUM('pending','confirmed','completed','cancelled') NOT NULL DEFAULT 'pending',
       created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
+
+    CREATE TABLE IF NOT EXISTS admin_invite_codes (
+    code        VARCHAR(64)  PRIMARY KEY,
+    created_by  VARCHAR(120) NOT NULL,
+    created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    used_by     VARCHAR(120) NULL,
+    used_at     TIMESTAMP    NULL,
+    expires_at  TIMESTAMP    NOT NULL
+  )
   `);
+
   console.log('Database ready.');
 }
+
+
+
 
 
 
@@ -337,19 +350,90 @@ function requireAdmin(req, res, next) {
   return res.status(401).json({ success: false, error: 'Unauthorized.' });
 }
 
+
+// GET /api/admin/invite-codes — list all codes
+app.get('/api/admin/invite-codes', requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT code, created_by, created_at, used_by, used_at, expires_at,
+             CASE 
+               WHEN used_by IS NOT NULL THEN 'used'
+               WHEN expires_at < NOW() THEN 'expired'
+               ELSE 'unused'
+             END AS status
+      FROM admin_invite_codes
+      ORDER BY created_at DESC
+    `);
+    return res.status(200).json(rows);
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to fetch invite codes.' });
+  }
+});
+
+
+
+// POST /api/admin/invite-codes — generate new code
+app.post('/api/admin/invite-codes', requireAdmin, async (req, res) => {
+  try {
+    const code = crypto.randomBytes(16).toString('hex'); // 32-char hex
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    
+    await db.query(`
+      INSERT INTO admin_invite_codes (code, created_by, expires_at)
+      VALUES (?, ?, ?)
+    `, [code, req.session.username || 'admin', expiresAt]);
+    
+    return res.status(201).json({ success: true, code, expiresAt });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to generate code.' });
+  }
+});
+
+
+
+// DELETE /api/admin/invite-codes/:code — revoke unused code
+app.delete('/api/admin/invite-codes/:code', requireAdmin, async (req, res) => {
+  try {
+    const [result] = await db.query(`
+      DELETE FROM admin_invite_codes WHERE code = ? AND used_by IS NULL
+    `, [req.params.code]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, error: 'Code not found or already used.' });
+    }
+    return res.status(200).json({ success: true, message: 'Code revoked.' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to revoke code.' });
+  }
+});
+
+
+
 app.post('/api/admin/register', registerLimiter, async (req, res) => {
   const { username, password, inviteCode } = req.body;
-  const validInvite = process.env.ADMIN_INVITE_CODE && inviteCode === process.env.ADMIN_INVITE_CODE;
-  if (!validInvite) return res.status(403).json({ success: false, error: 'Invalid invite code.' });
+
+  const [codes] = await db.query(`
+    SELECT * FROM admin_invite_codes 
+    WHERE code = ? AND used_by IS NULL AND expires_at > NOW()
+  `, [inviteCode]);
+  
+  if (codes.length === 0) {
+    return res.status(403).json({ success: false, error: 'Invalid or expired invite code.' });
+  }
+  
+  //const validInvite = process.env.ADMIN_INVITE_CODE && inviteCode === process.env.ADMIN_INVITE_CODE;
+  //if (!validInvite) return res.status(403).json({ success: false, error: 'Invalid invite code.' });
   
   const okUser = process.env.ADMIN_USERNAME && safeEqual(username || '', process.env.ADMIN_USERNAME);
   const okPass = process.env.ADMIN_PASSWORD && safeEqual(password || '', process.env.ADMIN_PASSWORD);
+  
   if (!okUser || !okPass) {
     return res.status(401).json({ success: false, error: 'Invalid credentials.' });
   }
   req.session.regenerate((err) => {
     if (err) return res.status(500).json({ success: false, error: 'Registration failed.' });
     req.session.isAdmin = true;
+    req.session.username = username;
     return res.status(200).json({ success: true, message: 'Admin registered.' });
   });
 });
@@ -364,7 +448,7 @@ app.get('/api/admin/login', (req, res) =>
 
  
 app.post('/api/admin/login', loginLimiter, async (req, res) => {
-  const { username, password, inviteCode } = req.body;
+  const { username, password } = req.body;
   const okUser = process.env.ADMIN_USERNAME && safeEqual(username || '', process.env.ADMIN_USERNAME);
   const okPass = process.env.ADMIN_PASSWORD && safeEqual(password || '', process.env.ADMIN_PASSWORD);
  
@@ -374,6 +458,7 @@ app.post('/api/admin/login', loginLimiter, async (req, res) => {
   req.session.regenerate((err) => {
     if (err) return res.status(500).json({ success: false, error: 'Login failed.' });
     req.session.isAdmin = true;
+    req.session.username = username;
     return res.status(200).json({ success: true, message: 'Logged in.' });
   });
 });
