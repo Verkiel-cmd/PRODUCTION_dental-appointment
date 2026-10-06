@@ -337,36 +337,33 @@ function requireAdmin(req, res, next) {
   return res.status(401).json({ success: false, error: 'Unauthorized.' });
 }
 
-app.get('/api/admin/register', registerLimiter, (req, res) => {
-
-  if (password.length < 8) {
-    errorBox.textContent = 'Password must be at least 8 characters.';
-    errorBox.style.display = 'block';
-    return;
-}
-
-  res.status(200).json({ 
-    success: true, 
-    isAdmin: !!(req.session && req.session.isAdmin) 
+app.post('/api/admin/register', registerLimiter, async (req, res) => {
+  const { username, password, inviteCode } = req.body;
+  const validInvite = process.env.ADMIN_INVITE_CODE && inviteCode === process.env.ADMIN_INVITE_CODE;
+  if (!validInvite) return res.status(403).json({ success: false, error: 'Invalid invite code.' });
+  
+  const okUser = process.env.ADMIN_USERNAME && safeEqual(username || '', process.env.ADMIN_USERNAME);
+  const okPass = process.env.ADMIN_PASSWORD && safeEqual(password || '', process.env.ADMIN_PASSWORD);
+  if (!okUser || !okPass) {
+    return res.status(401).json({ success: false, error: 'Invalid credentials.' });
+  }
+  req.session.regenerate((err) => {
+    if (err) return res.status(500).json({ success: false, error: 'Registration failed.' });
+    req.session.isAdmin = true;
+    return res.status(200).json({ success: true, message: 'Admin registered.' });
   });
 });
 
+
+
+
 app.get('/api/admin/login', (req, res) =>
   res.json({ success: true, isAdmin: !!req.session?.isAdmin }));
+
+
+
  
 app.post('/api/admin/login', loginLimiter, async (req, res) => {
-
-await fetch('https://your-api-domain/api/admin/login', {
-  method: 'POST',
-  credentials: 'include',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    username,
-    password,
-    inviteCode
-  })
-});
-
   const { username, password, inviteCode } = req.body;
   const okUser = process.env.ADMIN_USERNAME && safeEqual(username || '', process.env.ADMIN_USERNAME);
   const okPass = process.env.ADMIN_PASSWORD && safeEqual(password || '', process.env.ADMIN_PASSWORD);
@@ -380,6 +377,9 @@ await fetch('https://your-api-domain/api/admin/login', {
     return res.status(200).json({ success: true, message: 'Logged in.' });
   });
 });
+
+
+
  
 app.post('/api/admin/logout', (req, res) => {
   req.session.destroy(() => {
@@ -387,6 +387,9 @@ app.post('/api/admin/logout', (req, res) => {
     res.status(200).json({ success: true, message: 'Logged out.' });
   });
 });
+
+
+
  
 // ====
 // ADMIN DASHBOARD ENDPOINTS
@@ -406,6 +409,10 @@ app.get('/api/appointments', requireAdmin, async (req, res) => {
     return res.status(500).json({ success: false, error: 'Failed to fetch appointments.' });
   }
 });
+
+
+
+
  
 app.patch('/api/appointments/:id/status', requireAdmin, async (req, res) => {
   try {
@@ -423,6 +430,10 @@ app.patch('/api/appointments/:id/status', requireAdmin, async (req, res) => {
     return res.status(500).json({ success: false, error: 'Failed to update status.' });
   }
 });
+
+
+
+
  
 app.delete('/api/appointments/:id', requireAdmin, async (req, res) => {
   try {
@@ -435,10 +446,18 @@ app.delete('/api/appointments/:id', requireAdmin, async (req, res) => {
     return res.status(500).json({ success: false, error: 'Failed to delete appointment.' });
   }
 });
+
+
+
+
  
 app.get(/(.*)/, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+
+
+
  
 initDb()
   .then(() => {
