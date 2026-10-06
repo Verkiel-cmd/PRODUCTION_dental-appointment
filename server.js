@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import mysql from 'mysql2/promise';
 import session from 'express-session';
 import MySQLStoreFactory from 'express-mysql-session';
-import rateLimit, { ipKeyGenerator } from 'express-rate-limit'; 
+import rateLimit from 'express-rate-limit'; 
 import { fileURLToPath } from 'url';
 
 // Fix for ES Module directory resolution (__dirname)
@@ -110,12 +110,8 @@ const makeLimiter = rateLimit({
     message: { error: 'Too many requests, please try again later.'},
     standardHeaders: true,
     legacyHeaders: false,
-    validate: { ip: false, trustProxy: false },  // ← disable startup validation
-    keyGenerator: (req) => ipKeyGenerator(       // ← wrap with library helper
-        req.ip
-        || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
-        || 'unknown'
-    ),
+    validate: { ip: false, trustProxy: false },  // disable startup validation
+    // keyGenerator removed - default works with trust proxy
 });
 
 const otpLimiter = makeLimiter(5);     // each request costs you an SMS
