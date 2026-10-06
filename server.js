@@ -110,7 +110,6 @@ const makeLimiter = rateLimit({
     message: { error: 'Too many requests, please try again later.'},
     standardHeaders: true,
     legacyHeaders: false,
-    validate: false,  // ← disable ALL startup validations
 });
 
 const otpLimiter = makeLimiter(5);     // each request costs you an SMS
