@@ -128,6 +128,7 @@ async function initDb() {
       date   DATE         NOT NULL,
       time   VARCHAR(20)  NOT NULL,
       phone       VARCHAR(20)  NOT NULL,
+      otp         VARCHAR(20), NOT NULL,
       status      ENUM('pending','confirmed','completed','cancelled') NOT NULL DEFAULT 'pending',
       created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
