@@ -142,6 +142,10 @@
         document.getElementById('rows').addEventListener('change', async (e) => {
             if (!e.target.classList.contains('status-select')) return;
             try {
+                // encodeURIComponent(...)    -> makes that ID safe to put inside a URL
+                // /status                    -> the sub-route that updates only the status
+                // Example: booking 42 -> /api/appointments/42/status
+                // {                          -> opens the request options object (continues on the next lines)
                 await api(`/api/appointments/${encodeURIComponent(e.target.dataset.id)}/status`, {
                     method: 'PATCH',
                     body: JSON.stringify({ status: e.target.value })
@@ -160,21 +164,121 @@
         });
 
         // ----- helpers -----
+
+        // LINE 1: THE esc FUNCTION (START)
+        // Makes text safe to put inside HTML, so special characters can't break the page
+        // or inject code (this protects against XSS).
+        // const esc     -> creates a constant named esc
+        // = (s) =>      -> an arrow function that takes one input, s
+        // String(...)   -> converts the value to text
+        // s ?? ''       -> "if s is null or undefined, use an empty string instead"
+        // .replace(/[&<>"']/g, c =>
+        //               -> replaces matches in the text:
+        //                  /[&<>"']/ -> regex matching any ONE of these characters: & < > " '
+        //                  g         -> "global": replace every match, not just the first
+        //                  c =>      -> arrow function; c is the single matched character
+        //                               and the function returns what to replace it with
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
+
+            // LINE 2: THE REPLACEMENT LOOKUP (END OF esc)
+            // { '&': '&amp;', ... } -> an object that maps each dangerous character to its safe HTML code:
+            //                          &  ->  &amp;
+            //                          <  ->  &lt;
+            //                          >  ->  &gt;
+            //                          "  ->  &quot;
+            //                          '  ->  &#39;
+            // [c]                   -> looks up the matched character in that object and returns its safe version
+            // ( ... )               -> the object is wrapped in parentheses so JavaScript reads { as an
+            //                          object and not as the start of a code block
+            // ))                    -> the first ) closes the wrapping parentheses, the second closes .replace(
+            // ;                     -> ends the statement
             ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+        // LINE 3: THE toast FUNCTION (START)
+        // function toast(msg) -> defines a function named toast
+        //                        msg is the message text you pass in
+        // {                   -> opens the function body
         function toast(msg) {
+
+            // LINE 4: FIND THE TOAST ELEMENT
+            // const t                   -> a constant named t, short for "toast element"
+            // document.getElementById('toast') -> finds the element with id="toast" in the page
             const t = document.getElementById('toast');
+
+            // LINE 5: SET THE MESSAGE
+            // t.textContent -> the text inside the toast element
+            // = msg         -> replace it with the message that was passed in
             t.textContent = msg;
+
+            // LINE 6: SHOW THE TOAST
+            // t.style.display -> the CSS display property of the element
+            // = 'block'       -> makes it visible (it is presumably hidden by default)
             t.style.display = 'block';
+
+            // LINE 7: CANCEL THE PREVIOUS HIDE TIMER
+            // clearTimeout(...) -> stops a timer that has not fired yet
+            // toast._t          -> the timer id saved on the toast function itself
+            //                      (functions are objects, so they can hold properties)
+            // Why: if toast() is called twice quickly, the old timer would hide the new
+            // message too early. Cancelling it gives the new message its full time.
             clearTimeout(toast._t);
+
+            // LINE 8: START A NEW HIDE TIMER
+            // toast._t =         -> saves the new timer id so the next call can cancel it
+            // setTimeout(fn, ms) -> runs fn once after ms milliseconds
+            // () => (t.style.display = 'none')
+            //                    -> the function to run: hides the toast again
+            // 2500               -> 2500 milliseconds = 2.5 seconds
             toast._t = setTimeout(() => (t.style.display = 'none'), 2500);
+
+        // LINE 9: END OF toast
+        // } -> closes the function body opened on LINE 3
         }
 
+        // LINE 10: THE formatTime FUNCTION (START)
+        // Converts a 24-hour time like "14:05" into 12-hour format like "2:05 PM".
+        // function formatTime(t) -> defines a function; t is the time text passed in
+        // {                      -> opens the function body
         function formatTime(t) {
+
+            // LINE 11: SPLIT THE TIME INTO HOURS AND MINUTES
+            // String(t)      -> makes sure t is text
+            // .split(':')    -> cuts the text at every colon:     "14:05" -> ["14", "05"]
+            // .map(Number)   -> converts each piece to a number:  ["14", "05"] -> [14, 5]
+            // const [h, m]   -> destructuring: takes the first value into h (hours)
+            //                   and the second into m (minutes)
             const [h, m] = String(t).split(':').map(Number);
+
+            // LINE 12: HANDLE BAD INPUT
+            // Number.isNaN(h) -> true if h is "Not a Number" (e.g. the time was empty or invalid)
+            // return t        -> stop here and give back the original value unchanged
             if (Number.isNaN(h)) return t;
+
+            // LINE 13: BUILD AND RETURN THE 12-HOUR TEXT
+            // The backticks ` ` make a template string; ${ ... } inserts a value into it.
+            //
+            // ${((h + 11) % 12) + 1}
+            //     converts the 24-hour hour into a 12-hour hour:
+            //       h = 0  (midnight) -> 12
+            //       h = 1             -> 1
+            //       h = 12 (noon)     -> 12
+            //       h = 13            -> 1
+            //       h = 23            -> 11
+            // :
+            //     a literal colon between hours and minutes
+            // ${String(m).padStart(2, '0')}
+            //     String(m)         -> minutes as text
+            //     .padStart(2, '0') -> if shorter than 2 characters, add 0 at the front (5 -> "05")
+            // (space)
+            //     a literal space before AM/PM
+            // ${h >= 12 ? 'PM' : 'AM'}
+            //     ternary: if h is 12 or more -> 'PM', otherwise -> 'AM'
+            //
+            // Example: "14:05" -> "2:05 PM"
             return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+
+        // LINE 14: END OF formatTime
+        // } -> closes the function body opened on LINE 10
         }
 
         async function api(path, options = {}) {
@@ -203,10 +307,68 @@
                 (!q || [a.fullname, a.phone, a.id].some(v => String(v).toLowerCase().includes(q)))
             );
 
+                        /* ---------------------------------------------------------------
+             * Update the summary cards
+             * ---------------------------------------------------------------
+             * Writes the booking counts into the stat cards at the top of the
+             * page: one for the overall total, plus one per status.
+             */
+
+            // LINE 1: TOTAL CARD
+            // document                  -> the whole HTML page
+            // .getElementById('sTotal') -> finds the element with id="sTotal"
+            //                              (the <b> inside the Total card)
+            // .textContent              -> the text written inside that element
+            // =                         -> replace that text with the value on the right
+            // appointments.length       -> how many bookings are in the array
+            // In short: write the total number into the Total card.
             document.getElementById('sTotal').textContent = appointments.length;
+
+            // LINE 2: START THE STATUS LOOP
+            // STATUSES      -> your array of the 4 statuses
+            // .forEach(...) -> run the code inside once for each item in the array
+            // s             -> the current item. Each round it is one of:
+            //                  'pending', 'confirmed', 'completed', 'cancelled'
+            // =>            -> arrow function: "for each s, do the following block"
+            // {             -> opens the block of code that runs every round
             STATUSES.forEach(s => {
+
+                // LINE 3: FIND THE RIGHT CARD AND SET ITS TEXT
+                // Builds the card id out of the status name, then finds that element:
+                //   's'               -> every card id starts with the letter s
+                //   s[0]              -> first letter of the status        ('pending' -> 'p')
+                //   .toUpperCase()    -> capitalise it                     ('p' -> 'P')
+                //   s.slice(1)        -> the rest of the word, skipping the first letter ('ending')
+                //   +                 -> joins the pieces into one string
+                //
+                //   s            s[0]   s[0].toUpperCase()   resulting id
+                //   'pending'    'p'    'P'                  sPending
+                //   'confirmed'  'c'    'C'                  sConfirmed
+                //   'completed'  'c'    'C'                  sCompleted
+                //   'cancelled'  'c'    'C'                  sCancelled
+                //
+                // .getElementById(...) -> finds the element with that id
+                // .textContent =       -> sets its text to the value on the next line
+                // So each loop round finds the right card in the HTML.
                 document.getElementById('s' + s[0].toUpperCase() + s.slice(1)).textContent =
+
+                    // LINE 4: COUNT THE BOOKINGS WITH THIS STATUS
+                    // appointments.filter(...) -> keep only the bookings where the condition is true
+                    // a                        -> one booking from the array
+                    // a.status === s           -> true only if that booking's status equals
+                    //                             the current loop value
+                    // .length                  -> count how many bookings were kept
+                    // Example: on the 'pending' round, this counts every booking with
+                    // status: "pending" (say 3) and puts 3 into <b id="sPending">.
+                    // The ; ends the whole statement that began on LINE 3.
                     appointments.filter(a => a.status === s).length;
+
+            // LINE 5: END OF THE LOOP
+            // }  -> closes the block opened on LINE 2
+            // )  -> closes the .forEach( call
+            // ;  -> ends the statement
+            // After this, the loop moves to the next status. When all 4 are done,
+            // every card (Pending, Confirmed, Completed, Cancelled) shows its count.
             });
 
             const tbody = document.getElementById('rows');
@@ -278,8 +440,16 @@
         }
 
         async function revokeCode(code) {
+        // LINE 2: ASK FOR CONFIRMATION
+        // confirm('...')  -> shows a browser popup with OK / Cancel and returns true (OK) or false (Cancel)
+        // !               -> "not": flips true to false and false to true
+        // if (!confirm()) -> so this reads "if the user did NOT click OK"
+        // return          -> stop the function right here, nothing is revoked
+        // Result: clicking Cancel exits safely; clicking OK continues to the next line.
         if (!confirm('Revoke this unused code?')) return;
         try {
+            // encodeURIComponent(code) -> makes the code safe to put inside a URL
+            // Example: code "ABC123" -> DELETE /api/admin/invite-codes/ABC123
             await api(`/api/admin/invite-codes/${encodeURIComponent(code)}`, { method: 'DELETE' });
             loadInviteCodes();
             toast('Code revoked');
