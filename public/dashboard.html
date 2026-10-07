@@ -85,6 +85,73 @@
 
         let appointments = [];
 
+
+         // One appointment's row of HTML
+        function appointmentRowHtml(a) {
+            return `
+            <tr>
+                <!-- Patient name + id -->
+                <td><strong>${esc(a.fullname)}</strong><br><small>${esc(a.id)}</small></td>
+
+                <!-- Phone -->
+                <td>${esc(a.phone)}</td>
+
+                <!-- Service: look up the full name, fall back to the raw value -->
+                <td>${esc(SERVICES[a.service] || a.service)}</td>
+
+                <!-- Date + time -->
+                <td>${esc(a.date)}</td>
+                <td>${esc(formatTime(a.time))}</td>
+
+                <!-- Status pill + dropdown -->
+                <td>
+                    <span class="pill ${esc(a.status)}">${esc(a.status)}</span>
+                    ${statusSelectHtml(a)}
+                </td>
+
+                <!-- Delete button -->
+                <td><button class="btn-del" data-id="${esc(a.id)}">Delete</button></td>
+            </tr>`;
+        }
+
+        
+        function statusSelectHtml(a) {
+        // Build one <option> per status; mark the current one 'selected'
+        const options = STATUSES.map(s =>
+            `<option value="${s}" ${s === a.status ? 'selected' : ''}>${s}</option>`
+        ).join('');
+
+        // Wrap the options in a <select> tagged with this appointment's id
+        return `<select data-id="${esc(a.id)}" class="status-select">${options}</select>`;
+       }
+
+
+               // ----- actions -----
+        async function load() {
+            try {
+                appointments = await api('/api/appointments');
+                render();
+            } catch (err) {
+                if (err.message !== 'Session expired') {
+                    document.getElementById('rows').innerHTML =
+                        `<tr><td colspan="7" class="empty">${esc(err.message)}</td></tr>`;
+                }
+            }
+        }
+
+        document.getElementById('rows').addEventListener('change', async (e) => {
+            if (!e.target.classList.contains('status-select')) return;
+            try {
+                await api(`/api/appointments/${encodeURIComponent(e.target.dataset.id)}/status`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ status: e.target.value })
+                });
+                toast('Status updated');
+            } catch (err) { toast(err.message); }
+            load();
+        });
+
+
         // ----- theme -----
         if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark-theme');
         document.getElementById('themeBtn').addEventListener('click', () => {
@@ -125,43 +192,6 @@
             return data;
         }
 
-        function statusSelectHtml(a) {
-        // Build one <option> per status; mark the current one 'selected'
-        const options = STATUSES.map(s =>
-            `<option value="${s}" ${s === a.status ? 'selected' : ''}>${s}</option>`
-        ).join('');
-
-        // Wrap the options in a <select> tagged with this appointment's id
-        return `<select data-id="${esc(a.id)}" class="status-select">${options}</select>`;
-       }
-
-           // One appointment's row of HTML
-        function appointmentRowHtml(a) {
-            return `
-            <tr>
-                <!-- Patient name + id -->
-                <td><strong>${esc(a.fullname)}</strong><br><small>${esc(a.id)}</small></td>
-
-                <!-- Phone -->
-                <td>${esc(a.phone)}</td>
-
-                <!-- Service: look up the full name, fall back to the raw value -->
-                <td>${esc(SERVICES[a.service] || a.service)}</td>
-
-                <!-- Date + time -->
-                <td>${esc(a.date)}</td>
-                <td>${esc(formatTime(a.time))}</td>
-
-                <!-- Status pill + dropdown -->
-                <td>
-                    <span class="pill ${esc(a.status)}">${esc(a.status)}</span>
-                    ${statusSelectHtml(a)}
-                </td>
-
-                <!-- Delete button -->
-                <td><button class="btn-del" data-id="${esc(a.id)}">Delete</button></td>
-            </tr>`;
-        }
 
         // ----- render -----
         function render() {
@@ -173,12 +203,6 @@
                 (!q || [a.fullname, a.phone, a.id].some(v => String(v).toLowerCase().includes(q)))
             );
 
-            document.getElementById('sTotal').textContent = appointments.length;
-            STATUSES.forEach(s => {
-                document.getElementById('s' + s[0].toUpperCase() + s.slice(1)).textContent =
-                    appointments.filter(a => a.status === s).length;
-            });
-
             const tbody = document.getElementById('rows');
             if (!list.length) {
                 tbody.innerHTML = '<tr><td colspan="7" class="empty">No appointments found.</td></tr>';
@@ -187,30 +211,12 @@
             tbody.innerHTML = list.map(appointmentRowHtml).join('');
             }
 
-        // ----- actions -----
-        async function load() {
-            try {
-                appointments = await api('/api/appointments');
-                render();
-            } catch (err) {
-                if (err.message !== 'Session expired') {
-                    document.getElementById('rows').innerHTML =
-                        `<tr><td colspan="7" class="empty">${esc(err.message)}</td></tr>`;
-                }
-            }
-        }
+        document.getElementById('sTotal').textContent = appointments.length;
+            STATUSES.forEach(s => {
+                document.getElementById('s' + s[0].toUpperCase() + s.slice(1)).textContent =
+                    appointments.filter(a => a.status === s).length;
+            });
 
-        document.getElementById('rows').addEventListener('change', async (e) => {
-            if (!e.target.classList.contains('status-select')) return;
-            try {
-                await api(`/api/appointments/${encodeURIComponent(e.target.dataset.id)}/status`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({ status: e.target.value })
-                });
-                toast('Status updated');
-            } catch (err) { toast(err.message); }
-            load();
-        });
 
         document.getElementById('rows').addEventListener('click', async (e) => {
             if (!e.target.classList.contains('btn-del')) return;
