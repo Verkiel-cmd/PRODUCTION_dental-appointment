@@ -203,6 +203,12 @@
                 (!q || [a.fullname, a.phone, a.id].some(v => String(v).toLowerCase().includes(q)))
             );
 
+            document.getElementById('sTotal').textContent = appointments.length;
+            STATUSES.forEach(s => {
+                document.getElementById('s' + s[0].toUpperCase() + s.slice(1)).textContent =
+                    appointments.filter(a => a.status === s).length;
+            });
+
             const tbody = document.getElementById('rows');
             if (!list.length) {
                 tbody.innerHTML = '<tr><td colspan="7" class="empty">No appointments found.</td></tr>';
@@ -210,12 +216,6 @@
             }
             tbody.innerHTML = list.map(appointmentRowHtml).join('');
             }
-
-        document.getElementById('sTotal').textContent = appointments.length;
-            STATUSES.forEach(s => {
-                document.getElementById('s' + s[0].toUpperCase() + s.slice(1)).textContent =
-                    appointments.filter(a => a.status === s).length;
-            });
 
 
         document.getElementById('rows').addEventListener('click', async (e) => {
@@ -287,10 +287,10 @@
         }
 
         function copyCode() {
-        const input = document.getElementById('newCode');
-        input.select();
-        document.execCommand('copy');
-        toast('Copied to clipboard');
+            const input = document.getElementById('newCode');
+            input.select();
+            document.execCommand('copy');
+            toast('Copied to clipboard');
         }
 
         document.getElementById('codesBody').addEventListener('click', (e) => {
@@ -300,16 +300,16 @@
 
         // Tab switching for invite codes
         function showTab(tab) {
-        document.querySelectorAll('.tab-content').forEach(c => c.hidden = true);
-        document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-' + tab).hidden = false;
-        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-        if (tab === 'inviteCodes') loadInviteCodes();
+            document.querySelectorAll('.tab-content').forEach(c => c.hidden = true);
+            document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tab).hidden = false;
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+            if (tab === 'inviteCodes') loadInviteCodes();
         }
 
         // Hook up tab buttons
         document.querySelectorAll('.tab').forEach(btn => {
-        btn.addEventListener('click', () => showTab(btn.dataset.tab));
+            btn.addEventListener('click', () => showTab(btn.dataset.tab));
         });
 
         // Hook up invite codes buttons
