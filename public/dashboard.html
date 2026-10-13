@@ -9,13 +9,23 @@
 </head>
 <body>
     <header>
-        <div class="logo">Dental Clinic · Dashboard</div>
+        <div class="con-logo">
+            <div class="logo">Dental Clinic · Dashboard</div>
+
         <button class="tab active" data-tab="appointments">Appointments</button>
-        <button class="tab" data-tab="inviteCodes">Invite Codes</button>
+
+        <div class="invite-codes">
+        <button class="tab active" data-tab="tabToggle">Invite Codes</button>
+        </div>
+
+
         <div class="top-actions">
             <button class="btn btn-outline" id="themeBtn" type="button">🌓</button>
             <button class="btn btn-outline" id="refreshBtn" type="button">Refresh</button>
-            <button class="btn" id="logoutBtn" type="button">Log Out</button>
+
+            <div class="log-out">
+            <button class="btn" id="logoutBtn" type="button" class="logout">Log Out</button>
+            </div>
         </div>
     </header>
 
@@ -31,7 +41,11 @@
     </div>
 
         <div class="toolbar">
-            <input type="text" id="search" placeholder="Search name, phone, or ID...">
+            <div class="search-design">
+            <input type="text" id="search" class="search" placeholder="Search name, phone, or ID...">
+            </div>
+
+            <div class="status">
             <select id="filterStatus">
                 <option value="">All statuses</option>
                 <option value="pending">Pending</option>
@@ -40,6 +54,7 @@
                 <option value="cancelled">Cancelled</option>
             </select>
         </div>
+    </div>
 
         <div class="table-wrap">
             <table>
@@ -69,6 +84,7 @@
                     <tbody id="codesBody"></tbody>
                 </table>
             </div>
+        </div>
 
     <div class="toast" id="toast"></div>
 
