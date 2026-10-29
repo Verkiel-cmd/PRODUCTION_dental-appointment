@@ -8,6 +8,13 @@ import session from 'express-session';
 import MySQLStoreFactory from 'express-mysql-session';
 import rateLimit from 'express-rate-limit'; 
 import { fileURLToPath } from 'url';
+import bcrypt  from 'bcrypt';
+import jwt  from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID; // This must be the "Dental App Web Backend" ID
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Fix for ES Module directory resolution (__dirname)
 const __filename = fileURLToPath(import.meta.url);
@@ -149,6 +156,18 @@ async function initDb() {
       otp         VARCHAR(20),
       status      ENUM('pending','confirmed','completed','cancelled') NOT NULL DEFAULT 'pending',
       created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+    await db.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id          INT AUTO_INCREMENT PRIMARY KEY,
+      full_name   VARCHAR(100) NOT NULL,
+      email       VARCHAR(100) NOT NULL UNIQUE,
+      password    VARCHAR(255) NULL,
+      google_id   VARCHAR(255) NULL UNIQUE,
+      role        ENUM('patient', 'staff', 'admin') DEFAULT 'patient',
+      created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
@@ -551,6 +570,117 @@ app.delete('/api/appointments/:id', requireAdmin, async (req, res) => {
     return res.status(500).json({ success: false, error: 'Failed to delete appointment.' });
   }
 });
+
+
+
+
+
+// 1. STANDARD REGISTER (Always defaults to 'patient')
+app.post('/api/register', registerLimiter, async (req, res) => {
+  const { fullName, email, pass } = req.body;
+  
+  if (!fullName || !email || !pass) {
+    return res.status(400).json({ success: false, message: 'All fields are required.' });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(pass, 10);
+    const query = "INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, 'patient')";
+    
+    await db.query(query, [fullName, email, hashedPassword]);
+    res.json({ success: true, message: "Registered successfully", token: null, role: 'patient' });
+    
+  } catch (error) {
+    console.error("Register Error:", error);
+    if (error.code === 'ER_DUP_ENTRY') {
+        return res.json({ success: false, message: "Email already exists" });
+    }
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// 2. STANDARD LOGIN
+app.post('/api/login', loginLimiter, async (req, res) => {
+  const { email, pass } = req.body;
+
+  if (!email || !pass) {
+    return res.status(400).json({ success: false, message: 'Email and password required.' });
+  }
+
+  try {
+    const [results] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+    
+    if (results.length === 0) {
+      return res.json({ success: false, message: "User not found" });
+    }
+
+    const user = results[0];
+    
+    if (!user.password) {
+      return res.json({ success: false, message: "Please log in with Google" }); 
+    }
+    
+    const match = await bcrypt.compare(pass, user.password);
+    if (match) {
+        // Issue JWT for the Android App
+        const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET || "fallback_secret", { expiresIn: '30d' });
+        res.json({ success: true, message: "Login OK", token: token, role: user.role });
+    } else {
+        res.json({ success: false, message: "Wrong password" });
+    }
+  } catch (error) {
+    console.error("Login Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// 3. GOOGLE LOGIN
+app.post('/api/google-login', loginLimiter, async (req, res) => {
+  const { idToken } = req.body;
+  
+  if (!idToken) return res.status(400).json({ success: false, message: 'Token required.' });
+
+  try {
+      const ticket = await googleClient.verifyIdToken({ 
+          idToken: idToken, 
+          audience: process.env.GOOGLE_CLIENT_ID 
+      });
+      const payload = ticket.getPayload();
+      const googleId = payload['sub'];
+      const email = payload['email'];
+      const fullName = payload['name'];
+
+      const [results] = await db.query("SELECT * FROM users WHERE google_id = ? OR email = ?", [googleId, email]);
+      
+      if (results.length > 0) {
+          // Log them in
+          const user = results[0];
+          
+          // If they exist but don't have a google_id yet (e.g. they signed up with email first), update them
+          if (!user.google_id) {
+             await db.query("UPDATE users SET google_id = ? WHERE id = ?", [googleId, user.id]);
+          }
+
+          const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET || "fallback_secret", { expiresIn: '30d' });
+          return res.json({ success: true, message: "Google Login OK", token: token, role: user.role });
+      } else {
+          // Create new patient
+          const [result] = await db.query(
+            "INSERT INTO users (full_name, email, google_id, role) VALUES (?, ?, ?, 'patient')", 
+            [fullName, email, googleId]
+          );
+          const token = jwt.sign({ userId: result.insertId, role: 'patient' }, process.env.JWT_SECRET || "fallback_secret", { expiresIn: '30d' });
+          return res.json({ success: true, message: "Google Signup OK", token: token, role: 'patient' });
+      }
+  } catch (e) {
+      console.error("Google Login Error:", e);
+      res.json({ success: false, message: "Invalid Google Token" });
+  }
+});
+
+
+
+
 
 
 
