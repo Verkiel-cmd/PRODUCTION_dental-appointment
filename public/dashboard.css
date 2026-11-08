@@ -111,11 +111,12 @@ button {
   height: 42px;
   flex: none;
   border-radius: 13px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-strong));
-  color: #fff;
+  color: #020202;
   display: grid;
   place-items: center;
-  box-shadow: 0 6px 16px rgba(13, 148, 136, .35);
+}
+.dark-theme .brand-mark {
+  color: #fdffff;
 }
 
 .brand-mark svg {
