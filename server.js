@@ -63,7 +63,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // --- Middleware ---
 app.use((req, res, next) => {
     console.log(`Request URL: ${req.url}`);
-    console.log(`Request Method: ${req.method}`);
+    console.log(`Request Method: ${req.method} ${req.path}`);
     console.log(`Request Headers: ${JSON.stringify(req.headers)}`);
     next();
 });
@@ -277,9 +277,8 @@ function formatPhoneNumber(phone) {
   return '+' + cleaned;
 }
 
-// ====
+
 // SEND OTP ENDPOINT
-// ====
 app.post('/api/send-otp', otpLimiter, async (req, res) => {
   try {
     const { phone } = req.body;
@@ -291,7 +290,9 @@ app.post('/api/send-otp', otpLimiter, async (req, res) => {
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
     // Store OTP in RAM temporarily
-    otpStore.set(recipient, { code: generatedOtp, expires: Date.now() + 5 * 60 * 1000 });
+    otpStore.set(recipient, { 
+      code: generatedOtp, expires: Date.now() + 5 * 60 * 1000 
+    });
 
     // Call httpSMS API
     const response = await fetch('https://api.httpsms.com/v1/messages/send', {
@@ -375,21 +376,48 @@ app.post('/api/book-appointment', bookLimiter, async (req, res) => {
 });
 
 
-// ====
+
 // ADMIN LOGIN (credentials come from environment variables)
-// ====
 function safeEqual(a, b) {
   const x = crypto.createHash('sha256').update(String(a)).digest();
   const y = crypto.createHash('sha256').update(String(b)).digest();
   return crypto.timingSafeEqual(x, y);
 }
- 
+// ADMIN APPOINTMENTS ENDPOINT (For the Web App) ——————————————————————————————————————————————————————————
 function requireAdmin(req, res, next) {
   if (req.session && req.session.isAdmin) return next();
   return res.status(401).json({ success: false, error: 'Unauthorized.' });
 }
+// PATIENT APPOINTMENTS ENDPOINT (For the Android App) —————————————————————————————————————————————————————
+function requirePatientAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if(authHeader) {
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.JWT_SECRET || "fallback_secret", (err, user) => {
+
+      if(err) {
+        return res.status(403).json({
+          success: false,
+          error: 'Invalid token.' 
+        });
+      }
+
+        req.user = user;
+        next();
+      });
+
+    } else {
+      res.status(401).json({
+        success: false,
+        error: 'No token provided.'
+      });
+    }
+}
 
 
+
+// ADMIN APPOINTMENTS ENDPOINT (For the Web App) ——————————————————————————————————————————————————————————
 // GET /api/admin/invite-codes — list all codes
 app.get('/api/admin/invite-codes', requireAdmin, async (req, res) => {
   try {
@@ -410,7 +438,7 @@ app.get('/api/admin/invite-codes', requireAdmin, async (req, res) => {
 });
 
 
-
+// ADMIN APPOINTMENTS ENDPOINT (For the Web App) ——————————————————————————————————————————————————————————
 // POST /api/admin/invite-codes — generate new code
 app.post('/api/admin/invite-codes', requireAdmin, async (req, res) => {
   try {
@@ -429,7 +457,7 @@ app.post('/api/admin/invite-codes', requireAdmin, async (req, res) => {
 });
 
 
-
+// ADMIN APPOINTMENTS ENDPOINT (For the Web App) ——————————————————————————————————————————————————————————
 // DELETE /api/admin/invite-codes/:code — revoke unused code
 app.delete('/api/admin/invite-codes/:code', requireAdmin, async (req, res) => {
   try {
@@ -447,7 +475,7 @@ app.delete('/api/admin/invite-codes/:code', requireAdmin, async (req, res) => {
 });
 
 
-
+// ADMIN APPOINTMENTS ENDPOINT (For the Web App) ——————————————————————————————————————————————————————————
 app.post('/api/admin/register', registerLimiter, async (req, res) => {
   const { username, password, inviteCode } = req.body;
 
@@ -479,13 +507,10 @@ app.post('/api/admin/register', registerLimiter, async (req, res) => {
 
 
 
-
+//ADMIN STANDARD LOGIN (For the Web App) —————————————————————————————————————————————————————————————————————————————————————————————————
 app.get('/api/admin/login', (req, res) =>
   res.json({ success: true, isAdmin: !!req.session?.isAdmin }));
 
-
-
- 
 app.post('/api/admin/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   const okUser = process.env.ADMIN_USERNAME && safeEqual(username || '', process.env.ADMIN_USERNAME);
@@ -515,9 +540,7 @@ app.post('/api/admin/logout', (req, res) => {
 
 
  
-// ====
-// ADMIN DASHBOARD ENDPOINTS
-// ====
+// ADMIN APPOINTMENTS ENDPOINT (For the Web App) ——————————————————————————————————————————————————————————
 app.get('/api/appointments', requireAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -537,7 +560,7 @@ app.get('/api/appointments', requireAdmin, async (req, res) => {
 
 
 
- 
+ // ADMIN APPOINTMENTS ENDPOINT (For the Web App) ——————————————————————————————————————————————————————————
 app.patch('/api/appointments/:id/status', requireAdmin, async (req, res) => {
   try {
     const { status } = req.body;
@@ -558,7 +581,7 @@ app.patch('/api/appointments/:id/status', requireAdmin, async (req, res) => {
 
 
 
- 
+ // ADMIN APPOINTMENTS ENDPOINT (For the Web App) ——————————————————————————————————————————————————————————
 app.delete('/api/appointments/:id', requireAdmin, async (req, res) => {
   try {
     const [result] = await db.query('DELETE FROM appointments WHERE id = ?', [req.params.id]);
@@ -575,31 +598,10 @@ app.delete('/api/appointments/:id', requireAdmin, async (req, res) => {
 
 
 
-// 1. STANDARD REGISTER (Always defaults to 'patient')
-app.post('/api/register', registerLimiter, async (req, res) => {
-  const { fullName, email, pass } = req.body;
-  
-  if (!fullName || !email || !pass) {
-    return res.status(400).json({ success: false, message: 'All fields are required.' });
-  }
 
-  try {
-    const hashedPassword = await bcrypt.hash(pass, 10);
-    const query = "INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, 'patient')";
-    
-    await db.query(query, [fullName, email, hashedPassword]);
-    res.json({ success: true, message: "Registered successfully", token: null, role: 'patient' });
-    
-  } catch (error) {
-    console.error("Register Error:", error);
-    if (error.code === 'ER_DUP_ENTRY') {
-        return res.json({ success: false, message: "Email already exists" });
-    }
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
 
-// 2. STANDARD LOGIN
+
+//PATIENT STANDARD LOGIN (non-admin (For the Web App) —————————————————————————————————————————————————————————————————————————————————————————————————
 app.post('/api/login', loginLimiter, async (req, res) => {
   const { email, pass } = req.body;
 
@@ -634,6 +636,8 @@ app.post('/api/login', loginLimiter, async (req, res) => {
   }
 });
 
+
+//PATIENT STANDARD LOGIN (non-admin (For the Web App) —————————————————————————————————————————————————————————————————————————————————————————————————
 // 3. GOOGLE LOGIN
 app.post('/api/google-login', loginLimiter, async (req, res) => {
   const { idToken } = req.body;
@@ -679,7 +683,67 @@ app.post('/api/google-login', loginLimiter, async (req, res) => {
 });
 
 
+//PATIENT STANDARD LOGIN (non-admin (For the Web App) —————————————————————————————————————————————————————————————————————————————————————————————————
+app.get('/api/my-appointments', requirePatientAuth, async (req, res) => {
+   
+  try{
+    const [users] = await db.query("SELECT email, full_name FROM users WHERE id =?", [req.user.userId]);
 
+    if (users.length === 0)
+      return res.status(404).json({
+        success: false,
+        error: 'User not found.'
+      });
+
+      const userEmail = users[0].email;
+      const userName = users[0].full_name;
+
+      const [rows] = await db.query(
+        `SELECT id, fullname, service, DATE_FORMAT(date, '%Y-%m-%d') AS date, time AS time, phone, status, created_at AS createdAt 
+           FROM appointments 
+           WHERE fullname = ? OR phone = ?
+           ORDER BY created_at DESC`,
+           [userName, userEmail] 
+        );
+
+        return res.status(200).json(rows);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch appointments.'
+      });
+    }
+  });
+
+
+
+
+
+
+//PATIENT STANDARD REGISTER (non-admin (For the Web App) —————————————————————————————————————————————————————————————————————————————————————————————————
+// 1. STANDARD REGISTER (Always defaults to 'patient')
+app.post('/api/register', registerLimiter, async (req, res) => {
+  const { fullName, email, pass } = req.body;
+  
+  if (!fullName || !email || !pass) {
+    return res.status(400).json({ success: false, message: 'All fields are required.' });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(pass, 10);
+    const query = "INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, 'patient')";
+    
+    await db.query(query, [fullName, email, hashedPassword]);
+    res.json({ success: true, message: "Registered successfully", token: null, role: 'patient' });
+    
+  } catch (error) {
+    console.error("Register Error:", error);
+    if (error.code === 'ER_DUP_ENTRY') {
+        return res.json({ success: false, message: "Email already exists" });
+    }
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
 
 
 
@@ -783,8 +847,4 @@ initDb()
 app.get(/^\/(?!api\/).*/, (req, res) => {
   // Only matches non-API routes
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
 });
