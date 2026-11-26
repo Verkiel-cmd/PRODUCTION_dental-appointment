@@ -53,7 +53,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
   optionsSuccessStatus: 204
 }));
  
@@ -103,6 +103,59 @@ const sessionStore = new MySQLStore({
     checkExpirationInterval: 900000,
     expiration: 86400000,
 }, db);
+
+
+
+/* ===================== CSRF PROTECTION =====================
+   Synchronizer-token pattern: a random secret + HMAC token are stored
+   in the server-side session. Every unsafe request must echo the token
+   in the X-CSRF-Token header. Works with your cross-site Netlify setup.
+*/
+const CSRF_HEADER = 'x-csrf-token';
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+// Reuses the existing safeEqual() helper defined later in this file
+// (function declarations are hoisted, so this works here).
+function issueCsrfToken(req) {
+  if (!req.session.csrfSecret) {
+    req.session.csrfSecret = crypto.randomBytes(32).toString('hex');
+  }
+  const token = crypto
+    .createHmac('sha256', req.session.csrfSecret)
+    .update(req.sessionID || req.session.id)
+    .digest('hex');
+  req.session.csrfToken = token;   // modifying the session forces it to be saved
+  return token;
+}
+
+// Frontend calls this once per page load to get a token.
+app.get('/api/csrf-token', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ csrfToken: issueCsrfToken(req) });
+});
+
+// Protect every state-changing /api route.
+app.use('/api', (req, res, next) => {
+  if (SAFE_METHODS.has(req.method)) return next();
+
+  if (req.get('authorization')?.startsWith('Bearer ')) return next();
+
+  // Extra defence-in-depth: reject cross-site origins that aren't whitelisted.
+  const origin = req.get('origin');
+  if (origin && !allowedOrigins.includes(origin)) {
+    return res.status(403).json({ success: false, error: 'Forbidden origin.' });
+  }
+
+  const supplied = req.get(CSRF_HEADER);
+  const expected = req.session?.csrfToken;
+
+  if (!supplied || typeof supplied !== 'string' || !expected ||
+      !safeEqual(supplied, expected)) {
+    return res.status(403).json({ success: false, error: 'Invalid CSRF token.' });
+  }
+  next();
+});
+/* =================== END CSRF PROTECTION =================== */
 
 /*const sessionStore = new MySQLStore({
     // Pass the pre-configured pool
@@ -276,6 +329,23 @@ function formatPhoneNumber(phone) {
 
   return '+' + cleaned;
 }
+
+app.use('/api', (req, res, next) => {
+  if (SAFE_METHODS.has(req.method)) return next();
+
+  // JWT clients don't authenticate with the session cookie.
+  if (req.get('authorization')?.startsWith('Bearer ')) return next();
+
+  const origin = req.get('origin');
+  if (origin && !allowedOrigins.includes(origin))
+    return res.status(403).json({ success: false, error: 'Forbidden origin.' });
+
+  const supplied = req.get(CSRF_HEADER);
+  const expected = req.session?.csrfToken;
+  if (!supplied || typeof supplied !== 'string' || !expected || !safeEqual(supplied, expected))
+    return res.status(403).json({ success: false, error: 'Invalid CSRF token.' });
+  next();
+});
 
 
 // SEND OTP ENDPOINT
@@ -501,7 +571,12 @@ app.post('/api/admin/register', registerLimiter, async (req, res) => {
     if (err) return res.status(500).json({ success: false, error: 'Registration failed.' });
     req.session.isAdmin = true;
     req.session.username = username;
-    return res.status(200).json({ success: true, message: 'Admin registered.' });
+    const csrfToken = issueCsrfToken(req);
+    return res.status(200).json({
+    success: true,
+    message: 'Logged in.',
+    csrfToken    
+    });                                 // ADD
   });
 });
 
@@ -523,7 +598,12 @@ app.post('/api/admin/login', loginLimiter, async (req, res) => {
     if (err) return res.status(500).json({ success: false, error: 'Login failed.' });
     req.session.isAdmin = true;
     req.session.username = username;
-    return res.status(200).json({ success: true, message: 'Logged in.' });
+    const csrfToken = issueCsrfToken(req);
+    return res.status(200).json({
+      success: true,
+      message: 'Logged in.',
+      csrfToken
+    });
   });
 });
 

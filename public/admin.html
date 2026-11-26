@@ -6,6 +6,13 @@
     <title>Admin - Grace Dental Clinic</title>
     <link rel="stylesheet" href="admin.css">
 </head>
+
+<script type="module">
+  import { csrfFetch, resetCsrfToken } from './csrf.js';
+  window.csrfFetch = csrfFetch;
+  window.resetCsrfToken = resetCsrfToken;
+</script>
+
 <body>
     <header>
         <div class="logo">Dental Clinic · Admin</div>

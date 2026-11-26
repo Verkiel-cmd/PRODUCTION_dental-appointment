@@ -8,6 +8,11 @@
 </head>
 <body>
 
+<script type="module">
+  import { csrfFetch } from './csrf.js';
+  window.csrfFetch = csrfFetch;
+</script>
+
     <header>
         <div class="logo">
             Dental Clinic
@@ -133,7 +138,7 @@
             showPopup("Sending OTP code to your phone...");
 
             try {
-                const res = await fetch('/api/send-otp', {
+                const res = await csrfFetch('/api/send-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone })
@@ -172,7 +177,7 @@
                     otp
                 };
                 try {
-                    const response = await fetch('/api/book-appointment', {
+                    const response = await csrfFetch('/api/book-appointment', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json' },
